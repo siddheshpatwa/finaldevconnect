@@ -207,7 +207,7 @@ const deleteUser = async (userId) => {
       </h1>
         <button
           onClick={() => navigate("/login")}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-md transition ml-[80em]"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-md transition ml-[70em]"
         >
           Login
         </button>

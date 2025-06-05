@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://minisocialmedia-hxm1.onrender.com',
+  baseURL: 'https://minisocialmedia3.onrender.com',
+  // baseURL: 'https://minisocialmedia-hxm1.onrender.com',
+
   headers: {
     'Content-Type': 'application/json',
   },

@@ -28,28 +28,28 @@ const AdminPage = () => {
 
 
   const fetchPosts = async () => {
-    try {
-      console.log("Fetching posts from /api/admin/post...");
-      const res = await fetch("http://localhost:3000/api/admin/post");
-      const data = await res.json();
-      // console.log("Fetched posts:", data);
-      if (data.posts && Array.isArray(data.posts)) {
-        setPosts(data.posts);
-        // console.log("Posts state updated.");
-      } else {
-        // console.warn("Unexpected post data structure:", data);
-      }
-    } catch (error) {
-      console.error("Error fetching posts:", error);
+  try {
+    console.log("Fetching posts from /api/admin/post...");
+    const res = await api.get("http://localhost:3000/api/admin/post");
+    const data = res.data;
+
+    if (data.posts && Array.isArray(data.posts)) {
+      setPosts(data.posts);
+      // console.log("Posts state updated.");
+    } else {
+      // console.warn("Unexpected post data structure:", data);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+  }
+};
 
   const fetchUsers = async () => {
     try {
       // console.log("Fetching users from /api/admin/profile...");
       const res = await fetch("http://localhost:3000/api/admin/profile");
       const data = await res.json();
-      console.log("Fetched profile:", data);
+      // console.log("Fetched profile:", data);
      if (data.posts && Array.isArray(data.posts)) {
   setUsers(data.posts);
 
@@ -150,7 +150,7 @@ const deleteUser = async (userId) => {
     const response = await api.delete(`http://localhost:3000/api/admin/deleteProfile/${userId}`);
 
     if (response.status === 200 || response.status === 204) {
-      console.log(`User ${userId} deleted successfully.`);
+      // console.log(`User ${userId} deleted successfully.`);
       setUsers((prevUsers) => prevUsers.filter((user) => user.userId._id !== userId));
 
     }
@@ -170,7 +170,8 @@ const deleteUser = async (userId) => {
       post.title.toLowerCase().includes(term) ||
       post.desc.toLowerCase().includes(term) ||
       post.userId?.name.toLowerCase().includes(term);
-    if (match) console.log("Post matched filter:", post.title);
+    if (match) 
+      // console.log("Post matched filter:", post.title);
     return match;
   });
 
@@ -179,7 +180,9 @@ const deleteUser = async (userId) => {
     const match =
       user.name.toLowerCase().includes(term) ||
       user.email.toLowerCase().includes(term);
-    if (match) console.log("User matched filter:", user.name);
+
+    if (match) 
+      // console.log("User matched filter:", user.name);
     return match;
   });  
   

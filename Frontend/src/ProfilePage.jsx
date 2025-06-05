@@ -23,7 +23,7 @@ const ProfilePage = () => {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [errorUsers, setErrorUsers] = useState(null);
   const [previewImage, setPreviewImage] = useState(profile?.image || defaultAvatar);
-  const [selectedImage, setSelectedImage] = useState(null);
+  // const [selectedImage, setSelectedImage] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -318,46 +318,11 @@ const ProfilePage = () => {
         <p className="text-center text-red-600 mt-20 font-semibold">{errorProfile}</p>
       ) : profile ? (
         <div className="bg-white rounded-3xl shadow-xl p-10 text-center space-y-6 max-w-3xl mx-auto border border-cyan-200">
-          {/* <img
+          <img
             src={profile.image || defaultAvatar}
             alt="Profile"
             className="w-36 h-36 rounded-full border-8 border-cyan-400 shadow-lg object-cover mx-auto"
-          /> */}<div className="text-center space-y-4">
-  <img
-    src={previewImage}
-    alt="Profile"
-    className="w-36 h-36 rounded-full border-8 border-cyan-400 shadow-lg object-cover mx-auto"
-  />
-
-  <label className="inline-block bg-cyan-500 text-white px-4 py-2 rounded-full cursor-pointer hover:bg-cyan-600 transition">
-    Upload Image
-    <input
-      type="file"
-      accept="image/*"
- onChange={(e) => {
-  const file = e.target.files[0];
-  if (file) {
-    setSelectedImage(file); // Store the file for upload
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreviewImage(reader.result);
-    };
-    reader.readAsDataURL(file);
-  }
-}}
-
-      className="hidden"
-    />
-  </label>
-  {selectedImage && (
-  <button
-    onClick={handleImageUpload}
-    className="mt-2 bg-green-500 text-white px-4 py-2 rounded-full hover:bg-green-600 transition"
-  >
-    Save Profile Image
-  </button>
-)}
-</div>
+          />
 
           
           <h1 className="text-4xl font-extrabold text-cyan-700 tracking-wide">{profile.name}</h1>

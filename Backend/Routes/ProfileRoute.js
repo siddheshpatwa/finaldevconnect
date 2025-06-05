@@ -12,15 +12,15 @@ profileRouter.get("/get",validateTokenHeader, getProfile);
 profileRouter.get('/search',validateTokenHeader, searchProfiles);
 profileRouter.post('/upload-image',validateTokenHeader, upload.single("image"), uploadProfileImage);
 
-// post route
-profileRouter.post("/post_create",validateTokenHeader,upload.array("files", 5) , createPost);
-profileRouter.get("/post_get", validateTokenHeader, getPost);
-profileRouter.get("/post_get/:id", validateTokenHeader,getPostData);
-profileRouter.delete("/post_delete/:id", validateTokenHeader, deletePost);
-profileRouter.get("/post_view/:id", validateTokenHeader, viewPost);
-profileRouter.put("/post_u/:id", validateTokenHeader, upload.array("image", 5), updatePost);
-profileRouter.post("/like/:postId", validateTokenHeader,likePost);
-profileRouter.get("/like_count/:postId", validateTokenHeader, getLikeCount);
-profileRouter.get("/public-profile/:userId", validateTokenHeader, getPublicProfileAndPosts );
-profileRouter.post("/comment/:id", validateTokenHeader, commentPost);
+// // post route
+// profileRouter.post("/post_create",validateTokenHeader,upload.array("files", 5) , createPost);
+// profileRouter.get("/post_get", validateTokenHeader, getPost);
+// profileRouter.get("/post_get/:id", validateTokenHeader,getPostData);
+// profileRouter.delete("/post_delete/:id", validateTokenHeader, deletePost);
+// profileRouter.get("/post_view/:id", validateTokenHeader, viewPost);
+// profileRouter.put("/post_u/:id", validateTokenHeader, upload.array("image", 5), updatePost);
+// profileRouter.post("/like/:postId", validateTokenHeader,likePost);
+// profileRouter.get("/like_count/:postId", validateTokenHeader, getLikeCount);
+// profileRouter.get("/public-profile/:userId", validateTokenHeader, getPublicProfileAndPosts );
+// profileRouter.post("/comment/:id", validateTokenHeader, commentPost);
 module.exports = profileRouter;

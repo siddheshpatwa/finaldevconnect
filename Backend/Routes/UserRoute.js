@@ -7,4 +7,8 @@ userrouter.post('/register', registerUser);
 userrouter.post('/login', loginUser);
 userrouter.post('/profile', validateTokenHeader,getCurrentUser);
 
+
+
+
+
 module.exports = userrouter;

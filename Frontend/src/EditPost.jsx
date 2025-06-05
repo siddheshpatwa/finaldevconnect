@@ -12,7 +12,7 @@ const EditPost = () => {
     desc: "",
     caption: "",
     hashtags: "",
-    // tags: "",
+    tags: "",
     location: "",
     alt: "",
     image: "",
@@ -41,7 +41,7 @@ const EditPost = () => {
           desc: data.desc ?? "",
           caption: data.caption ?? "",
           hashtags: data.hashtags ?? "",
-          // tags: data.tags ?? "",
+          tags: data.tags ?? "",
           location: data.location ?? "",
           alt: data.alt ?? "",
           image: data.img?.[0] ?? "",
@@ -89,7 +89,7 @@ const EditPost = () => {
     formData.append("desc", post.desc ?? "");
     formData.append("caption", post.caption ?? "");
     formData.append("hashtags", post.hashtags ?? "");
-    // formData.append("tags", post.tags ?? "");
+    formData.append("tags", post.tags ?? "");
     formData.append("location", post.location ?? "");
     formData.append("alt", post.alt ?? "");
 
@@ -134,7 +134,7 @@ const EditPost = () => {
           { label: "Description", name: "desc", multiline: true },
           { label: "Caption", name: "caption", multiline: true },
           { label: "Hashtags", name: "hashtags", multiline: false },
-          // { label: "Tagged People", name: "tags", multiline: false },
+          { label: "Tagged People", name: "tags", multiline: false },
           { label: "Location", name: "location", multiline: false },
           { label: "Alt Text", name: "alt", multiline: false },
         ].map(({ label, name, multiline }) => (

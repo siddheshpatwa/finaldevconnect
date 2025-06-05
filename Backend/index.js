@@ -6,13 +6,11 @@ const Users = require('./Models/Users');
 const userrouter = require('./Routes/UserRoute');
 const profileRouter = require('./Routes/ProfileRoute');
 const adminRouter = require('./Routes/AdminRoute');
-const {ErrorHandler} = require('./Middleware/ErrorHandler');
 require('dotenv').config();
 const port = 3000;
 connectDB();
 
-app.use(cors());
-// app.use(ErrorHandler());
+app.use(cors())
 app.use(express.json());
 app.use('/api/user',userrouter)
 app.use('/api/user/profile',profileRouter)

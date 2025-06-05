@@ -160,4 +160,4 @@ module.exports = {
   searchProfiles,
   getPublicProfileAndPosts,
   uploadProfileImage
-}
+} 

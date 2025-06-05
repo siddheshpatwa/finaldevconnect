@@ -3,6 +3,9 @@ const Profile = require("../Models/Profile");
 const User = require("../Models/Users");
 const Post = require("../Models/Post");
 const Users = require("../Models/Users");
+const fs = require("fs");
+const cloudinary = require("cloudinary").v2;
+
 //@desc    Create user profile
 //@route   POST /api/users/profile/create
 //@access  Private
@@ -136,11 +139,48 @@ const posts = await Post.find({ userId:req.params.userId });
     });
 });
 
+const uploadProfileImage = asynchandler(async (req, res) => {
+  const userId = req.user._id;
+
+  // Check for image file
+  if (!req.file) {
+    res.status(400);
+    throw new Error("No image file uploaded");
+  }
+
+  // Upload to Cloudinary
+  const result = await cloudinary.uploader.upload(req.file.path, {
+    folder: "profiles",
+    resource_type: "image",
+  });
+
+  // Remove local file
+  fs.unlinkSync(req.file.path);
+
+  // Update profile image
+  const updatedProfile = await Profile.findOneAndUpdate(
+    { userId },
+    { image: result.secure_url },
+    { new: true }
+  );
+
+  if (!updatedProfile) {
+    res.status(404);
+    throw new Error("Profile not found");
+  }
+
+  res.status(200).json({
+    message: "Profile image uploaded successfully",
+    image: updatedProfile.image,
+  });
+});
+
 
 module.exports = {
     createProfile,
     updateProfile,
     getProfile,
     searchProfiles,
-    getPublicProfileAndPosts
+    getPublicProfileAndPosts,
+    uploadProfileImage 
 }

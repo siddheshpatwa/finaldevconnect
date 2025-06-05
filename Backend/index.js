@@ -10,7 +10,9 @@ require('dotenv').config();
 const port = 3000;
 connectDB();
 
-app.use(cors())
+app.use(cors({
+  origin: 'https://clever-chimera-c9fa0a.netlify.app',
+}));
 app.use(express.json());
 app.use('/api/user',userrouter)
 app.use('/api/user/profile',profileRouter)

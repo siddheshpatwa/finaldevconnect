@@ -8,7 +8,7 @@ const getAdminPost = asynchandler(async (req, res) => {
 
   if (!posts || posts.length === 0) {
     res.status(404);
-    throw new Error("No posts found");
+    // throw new Error("No posts found");
   }
 
   res.status(200).json({

@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import axios from "axios";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 import { useNavigate } from "react-router-dom";
 import {
   FiUser,
@@ -10,25 +12,29 @@ import {
   FiBookOpen,
   FiTag,
 } from "react-icons/fi";
-import api from "axios";
+
+// 👇 Validation Schema using Yup
+const validationSchema = Yup.object().shape({
+  name: Yup.string()
+    .matches(/^[A-Za-z\s]+$/, "Only letters and spaces are allowed")
+    .required("Name is required"),
+  bio: Yup.string()
+    .matches(/^[A-Za-z\s]*$/, "Only letters and spaces are allowed")
+    .max(200, "Bio must be under 200 characters"),
+  skills: Yup.string()
+    .matches(
+      /^([a-zA-Z]+)(,\s*[a-zA-Z]+)*$/,
+      "Enter comma-separated skills (letters only)"
+    )
+    .required("Skills are required"),
+  github: Yup.string().url("Invalid GitHub URL").nullable(),
+  linkedin: Yup.string().url("Invalid LinkedIn URL").nullable(),
+  twitter: Yup.string().url("Invalid Twitter URL").nullable(),
+  portfolio: Yup.string().url("Invalid Portfolio URL").nullable(),
+});
 
 const CreateProfile = () => {
-  const [form, setForm] = useState({
-    name: "",
-    bio: "",
-    skills: "",
-    github: "",
-    linkedin: "",
-    twitter: "",
-    portfolio: "",
-  });
-
-  const [error, setError] = useState(null);
   const navigate = useNavigate();
-
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
 
   const normalizeUrl = (url) => {
     if (!url) return "";
@@ -38,38 +44,49 @@ const CreateProfile = () => {
     return url;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const token = localStorage.getItem("token");
+  const formik = useFormik({
+    initialValues: {
+      name: "",
+      bio: "",
+      skills: "",
+      github: "",
+      linkedin: "",
+      twitter: "",
+      portfolio: "",
+    },
+    validationSchema,
+    onSubmit: async (values, { setSubmitting, setErrors }) => {
+      const token = localStorage.getItem("token");
 
-    const payload = {
-      name: form.name,
-      bio: form.bio,
-      skills: form.skills
-        .split(",")
-        .map((skill) => skill.trim())
-        .filter((skill) => skill !== ""),
-      socialLinks: {
-        github: normalizeUrl(form.github),
-        linkedin: normalizeUrl(form.linkedin),
-        twitter: normalizeUrl(form.twitter),
-        portfolio: normalizeUrl(form.portfolio),
-      },
-    };
+      const payload = {
+        name: values.name,
+        bio: values.bio,
+        skills: values.skills
+          .split(",")
+          .map((skill) => skill.trim())
+          .filter((skill) => skill !== ""),
+        socialLinks: {
+          github: normalizeUrl(values.github),
+          linkedin: normalizeUrl(values.linkedin),
+          twitter: normalizeUrl(values.twitter),
+          portfolio: normalizeUrl(values.portfolio),
+        },
+      };
 
-    try {
-      const response = await api.post(
-        "http://localhost:3000/api/user/profile/create",
-        payload,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      navigate("/profile");
-    } catch (err) {
-      setError(err.response?.data?.message || err.message);
-    }
-  };
+      try {
+        await axios.post(
+          "http://localhost:3000/api/user/profile/create",
+          payload,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        navigate("/profile");
+      } catch (err) {
+        setErrors({ submit: err.response?.data?.message || err.message });
+      } finally {
+        setSubmitting(false);
+      }
+    },
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-gray-200 flex items-center justify-center px-4">
@@ -77,70 +94,83 @@ const CreateProfile = () => {
         <h2 className="text-4xl font-bold text-center text-gray-800 mb-8">
           Create Your Profile
         </h2>
-        {error && (
+
+        {formik.errors.submit && (
           <p className="mb-4 text-center text-red-600 font-medium animate-pulse">
-            {error}
+            {formik.errors.submit}
           </p>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={formik.handleSubmit} className="space-y-5">
           <InputWithIcon
-            icon={<FiUser className="text-gray-400" />}
+            icon={<FiUser />}
             name="name"
-            value={form.name}
-            onChange={handleChange}
             placeholder="Full Name"
+            value={formik.values.name}
+            onChange={formik.handleChange}
+            error={formik.touched.name && formik.errors.name}
+            onBlur={formik.handleBlur}
             required
           />
           <InputWithIcon
-            icon={<FiBookOpen className="text-gray-400" />}
+            icon={<FiBookOpen />}
             name="bio"
-            value={form.bio}
-            onChange={handleChange}
             placeholder="Short Bio"
+            value={formik.values.bio}
+            onChange={formik.handleChange}
+            error={formik.touched.bio && formik.errors.bio}
+            onBlur={formik.handleBlur}
           />
           <InputWithIcon
-            icon={<FiTag className="text-gray-400" />}
+            icon={<FiTag />}
             name="skills"
-            value={form.skills}
-            onChange={handleChange}
             placeholder="Skills (comma-separated)"
+            value={formik.values.skills}
+            onChange={formik.handleChange}
+            error={formik.touched.skills && formik.errors.skills}
+            onBlur={formik.handleBlur}
+            required
           />
           <InputWithIcon
-            icon={<FiGithub className="text-gray-400" />}
+            icon={<FiGithub />}
             name="github"
-            value={form.github}
-            onChange={handleChange}
             placeholder="GitHub URL"
-            type="url"
+            value={formik.values.github}
+            onChange={formik.handleChange}
+            error={formik.touched.github && formik.errors.github}
+            onBlur={formik.handleBlur}
           />
           <InputWithIcon
-            icon={<FiLinkedin className="text-gray-400" />}
+            icon={<FiLinkedin />}
             name="linkedin"
-            value={form.linkedin}
-            onChange={handleChange}
             placeholder="LinkedIn URL"
-            type="url"
+            value={formik.values.linkedin}
+            onChange={formik.handleChange}
+            error={formik.touched.linkedin && formik.errors.linkedin}
+            onBlur={formik.handleBlur}
           />
           <InputWithIcon
-            icon={<FiTwitter className="text-gray-400" />}
+            icon={<FiTwitter />}
             name="twitter"
-            value={form.twitter}
-            onChange={handleChange}
             placeholder="Twitter URL"
-            type="url"
+            value={formik.values.twitter}
+            onChange={formik.handleChange}
+            error={formik.touched.twitter && formik.errors.twitter}
+            onBlur={formik.handleBlur}
           />
           <InputWithIcon
-            icon={<FiLink className="text-gray-400" />}
+            icon={<FiLink />}
             name="portfolio"
-            value={form.portfolio}
-            onChange={handleChange}
             placeholder="Portfolio URL"
-            type="url"
+            value={formik.values.portfolio}
+            onChange={formik.handleChange}
+            error={formik.touched.portfolio && formik.errors.portfolio}
+            onBlur={formik.handleBlur}
           />
 
           <button
             type="submit"
+            disabled={formik.isSubmitting}
             className="w-full py-3 rounded-full font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700 transition duration-300"
           >
             Save Profile
@@ -151,6 +181,7 @@ const CreateProfile = () => {
   );
 };
 
+// 👇 Enhanced InputWithIcon with error display
 const InputWithIcon = ({
   icon,
   name,
@@ -158,19 +189,31 @@ const InputWithIcon = ({
   onChange,
   placeholder,
   type = "text",
+  onBlur,
   required = false,
+  error,
 }) => (
-  <div className="relative">
-    <span className="absolute top-3 left-4">{icon}</span>
-    <input
-      type={type}
-      name={name}
-      placeholder={placeholder}
-      value={value}
-      onChange={onChange}
-      required={required}
-      className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-700 placeholder-gray-400"
-    />
+  <div>
+    <div className="relative">
+      <span className="absolute top-3 left-4 text-gray-400">{icon}</span>
+      <input
+        type={type}
+        name={name}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        required={required}
+        className={`w-full pl-12 pr-4 py-3 border ${
+          error ? "border-red-400" : "border-gray-300"
+        } rounded-full shadow-sm focus:outline-none focus:ring-2 ${
+          error ? "focus:ring-red-400" : "focus:ring-indigo-400"
+        } text-gray-700 placeholder-gray-400`}
+      />
+    </div>
+    {error && (
+      <p className="text-red-500 text-sm mt-1 ml-2">{error}</p>
+    )}
   </div>
 );
 

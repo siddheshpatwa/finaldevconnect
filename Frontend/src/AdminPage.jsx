@@ -27,41 +27,45 @@ const AdminPage = () => {
 
 
 
-  const fetchPosts = async () => {
-    try {
-      console.log("Fetching posts from /api/admin/post...");
-      const res = await fetch("http://localhost:3000/api/admin/post");
-      const data = await res.json();
-      // console.log("Fetched posts:", data);
-      if (data.posts && Array.isArray(data.posts)) {
-        setPosts(data.posts);
-        // console.log("Posts state updated.");
-      } else {
-        // console.warn("Unexpected post data structure:", data);
-      }
-    } catch (error) {
-      console.error("Error fetching posts:", error);
+
+
+const fetchPosts = async () => {
+  try {
+    console.log("Fetching posts from /api/admin/post...");
+    const res = await axios.get("http://localhost:3000/api/admin/post");
+    const data = res.data;
+
+    // console.log("Fetched posts:", data);
+    if (data.posts && Array.isArray(data.posts)) {
+      setPosts(data.posts);
+      // console.log("Posts state updated.");
+    } else {
+      console.warn("Unexpected post data structure:", data);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching posts:", error.message);
+  }
+};
+
 
   const fetchUsers = async () => {
-    try {
-      // console.log("Fetching users from /api/admin/profile...");
-      const res = await fetch("http://localhost:3000/api/admin/profile");
-      const data = await res.json();
-      console.log("Fetched profile:", data);
-     if (data.posts && Array.isArray(data.posts)) {
-  setUsers(data.posts);
+  try {
+    const res = await axios.get("http://localhost:3000/api/admin/profile");
+    const data = res.data;
 
-        // console.log("Users state updated 1:", data.users);
-        // console.log("Users state updated.");
-      } else {
-        // console.warn("Unexpected user data structure:", data);
-      }
-    } catch (error) {
-      // console.error("Error fetching users:", error);
+    console.log("Fetched profile:", data);
+
+    if (data.posts && Array.isArray(data.posts)) {
+      setUsers(data.posts);
+      // console.log("Users state updated:", data.posts);
+    } else {
+      console.warn("Unexpected response structure:", data);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching users:", error.message);
+  }
+};
+
 const deletePost = async (postId) => {
   try {
     const response = await api.delete(`http://localhost:3000/api/admin/deletePost/${postId}`);
@@ -165,14 +169,18 @@ const deleteUser = async (userId) => {
 
 
   const filteredPosts = posts.filter((post) => {
-    const term = postSearch.toLowerCase();
-    const match =
-      post.title.toLowerCase().includes(term) ||
-      post.desc.toLowerCase().includes(term) ||
-      post.userId?.name.toLowerCase().includes(term);
-    if (match) console.log("Post matched filter:", post.title);
-    return match;
-  });
+  const term = postSearch.toLowerCase();
+
+  const match =
+    post.title?.toLowerCase().includes(term) ||
+    post.desc?.toLowerCase().includes(term) ||
+    post.userId?.name?.toLowerCase().includes(term) ||
+    post.userId?.email?.toLowerCase().includes(term);
+
+  if (match) console.log("Post matched filter:", post.title);
+  return match;
+});
+
 
   const filteredUsers = users.filter((user) => {
     const term = userSearch.toLowerCase();
@@ -320,7 +328,7 @@ const deleteUser = async (userId) => {
           <FiSearch className="text-gray-500 mr-2" />
           <input
             type="text"
-            placeholder="Search posts by title, description, or user..."
+            placeholder="Search posts by title, description, or user email ..."
             value={postSearch}
             onChange={(e) => {
               setPostSearch(e.target.value);
@@ -351,6 +359,10 @@ const deleteUser = async (userId) => {
                 <p className="text-sm text-gray-600 mb-2">
                   <strong>By:</strong> {post.userId?.name || "Unknown User"}
                 </p>
+                 <p className="text-sm text-gray-600 mb-2">
+                  {post.userId?.email|| "Unknown User"}
+                </p>
+                {console.log("Post userId:", post)}
 
                 {post.img && post.img.length > 0 && (
                   <img

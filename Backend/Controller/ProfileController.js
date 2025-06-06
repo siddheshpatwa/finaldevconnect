@@ -115,10 +115,13 @@ const getPublicProfileAndPosts = asynchandler(async (req, res) => {
   }
   // Get all posts by the user
   const posts = await Post.find({ userId: req.params.userId });
+    const profile = await Profile.find({ userId: req.params.userId });
+
   res.status(200).json({
     message: "Public profile and posts fetched successfully",
     user,
     posts,
+    profile
   });
 });
 

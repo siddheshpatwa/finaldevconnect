@@ -14,6 +14,7 @@ const PublicProfilePage = () => {
   const [commentInputs, setCommentInputs] = useState({}); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [previewImage, setPreviewImage] = useState(profile?.image || defaultAvatar);
 
   const toggleLike = async (postId) => {
     const token = localStorage.getItem("token");
@@ -136,44 +137,36 @@ const PublicProfilePage = () => {
       }
 
       try {
-        setLoading(true);
-        console.log("[fetchPublicProfile] Fetching profile for userId:", userId);
+  setLoading(true);
+  const res = await api.get(
+    `http://localhost:3000/api/user/profile/public-profile/${userId}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
 
-        const res = await api.get(
-          `http://localhost:3000/api/user/profile/public-profile/${userId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+  const fetchedProfile = res.data.profile?.[0];
+  const userIdFromResponse = fetchedProfile?.userId;
 
-        console.log("✅ Full API Response:", res.data);
+  setProfile(fetchedProfile);
 
-        const fetchedUser = res.data.user;
-        const userIdFromResponse = fetchedUser?._id;
+  setPosts(
+    (res.data.posts || []).map((post) => ({
+      ...post,
+      likes: Array.isArray(post.likes) ? post.likes.length : post.likes,
+      liked:
+        userIdFromResponse && Array.isArray(post.likes)
+          ? post.likes.includes(userIdFromResponse)
+          : post.liked || false,
+    }))
+  );
+} catch (err) {
+  const msg = err.response?.data?.message || err.message;
+  setError(msg);
+} finally {
+  setLoading(false);
+}
 
-        setProfile(fetchedUser);
-
-        setPosts(
-          (res.data.posts || []).map((post) => ({
-            ...post,
-            likes: Array.isArray(post.likes) ? post.likes.length : post.likes,
-            liked:
-              userIdFromResponse && Array.isArray(post.likes)
-                ? post.likes.includes(userIdFromResponse)
-                : post.liked || false,
-          }))
-        );
-
-        console.log("👤 Profile set:", fetchedUser);
-        console.log("📝 Posts set:", res.data.posts);
-      } catch (err) {
-        const msg = err.response?.data?.message || err.message;
-        console.error("❌ Error fetching profile:", msg);
-        setError(msg);
-      } finally {
-        setLoading(false);
-        console.log("[fetchPublicProfile] Loading complete");
-      }
     };
 
     fetchPublicProfile();
@@ -210,6 +203,7 @@ const PublicProfilePage = () => {
           alt={`${profile.name || "User"}'s profile`}
           className="w-36 h-36 rounded-full border-8 border-cyan-400 shadow-lg object-cover mx-auto"
         />
+        {console.log("Profile image URL:", profile)}
         <h1 className="text-4xl font-extrabold text-cyan-700 tracking-wide">
           {profile.name}
         </h1>
@@ -222,18 +216,21 @@ const PublicProfilePage = () => {
           {profile.skills?.length > 0 ? profile.skills.join(", ") : "None"}
         </p>
         <div className="flex justify-center flex-wrap gap-6 mt-4">
-          {profile.socialLinks &&
-            Object.entries(profile.socialLinks).map(([key, url]) => (
-              <a
-                key={key}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-cyan-600 hover:text-cyan-800 transition font-semibold uppercase tracking-wide"
-              >
-                {key}
-              </a>
-            ))}
+         {profile.socialLinks &&
+  Object.entries(profile.socialLinks)
+    .filter(([_, url]) => url?.trim())
+    .map(([key, url]) => (
+      <a
+        key={key}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-cyan-600 hover:text-cyan-800 transition font-semibold uppercase tracking-wide"
+      >
+        {key.charAt(0).toUpperCase() + key.slice(1)}
+      </a>
+    ))}
+
         </div>
       </div>
       <div className="text-center mt-6">

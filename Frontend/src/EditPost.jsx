@@ -12,9 +12,7 @@ const EditPost = () => {
     desc: "",
     caption: "",
     hashtags: "",
-    tags: "",
     location: "",
-    alt: "",
     image: "",
   });
 
@@ -23,6 +21,9 @@ const EditPost = () => {
   const [error, setError] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const token = localStorage.getItem("token");
+
+  const isValidText = (text) => /^[A-Za-z\s]+$/.test(text);
+  const isValidHashtags = (text) => /^#([A-Za-z]+)( #[A-Za-z]+)*$/.test(text);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -41,9 +42,7 @@ const EditPost = () => {
           desc: data.desc ?? "",
           caption: data.caption ?? "",
           hashtags: data.hashtags ?? "",
-          tags: data.tags ?? "",
           location: data.location ?? "",
-          alt: data.alt ?? "",
           image: data.img?.[0] ?? "",
         });
       } catch (err) {
@@ -58,6 +57,14 @@ const EditPost = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    const textFields = ["title", "desc", "caption", "location"];
+    if (textFields.includes(name)) {
+      if (!/^[A-Za-z\s]*$/.test(value)) return;
+    }
+    if (name === "hashtags") {
+      if (!/^#([A-Za-z]+)?( #[A-Za-z]+)*$/.test(value) && value !== "") return;
+    }
+
     setPost((prevPost) => ({ ...prevPost, [name]: value }));
     if (formErrors[name]) setFormErrors((fe) => ({ ...fe, [name]: "" }));
   };
@@ -69,8 +76,30 @@ const EditPost = () => {
 
   const validateForm = () => {
     const errors = {};
-    if (!post.title.trim()) errors.title = "Title is required.";
-    if (!post.desc.trim()) errors.desc = "Description is required.";
+    if (!post.title.trim()) {
+      errors.title = "Title is required.";
+    } else if (!isValidText(post.title)) {
+      errors.title = "Title must contain only letters and spaces.";
+    }
+
+    if (!post.desc.trim()) {
+      errors.desc = "Description is required.";
+    } else if (!isValidText(post.desc)) {
+      errors.desc = "Description must contain only letters and spaces.";
+    }
+
+    if (post.caption && !isValidText(post.caption)) {
+      errors.caption = "Caption must contain only letters and spaces.";
+    }
+
+    if (post.location && !isValidText(post.location)) {
+      errors.location = "Location must contain only letters and spaces.";
+    }
+
+    if (post.hashtags && !isValidHashtags(post.hashtags)) {
+      errors.hashtags = "Hashtags must start with # and contain only letters.";
+    }
+
     return errors;
   };
 
@@ -89,9 +118,7 @@ const EditPost = () => {
     formData.append("desc", post.desc ?? "");
     formData.append("caption", post.caption ?? "");
     formData.append("hashtags", post.hashtags ?? "");
-    formData.append("tags", post.tags ?? "");
     formData.append("location", post.location ?? "");
-    formData.append("alt", post.alt ?? "");
 
     if (post.image && typeof post.image !== "string") {
       formData.append("image", post.image);
@@ -128,21 +155,16 @@ const EditPost = () => {
       <h2 className="text-3xl font-bold mb-8 text-indigo-700">Edit Post</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Text inputs */}
+        {/* Form Fields */}
         {[
           { label: "Title", name: "title", multiline: false },
           { label: "Description", name: "desc", multiline: true },
           { label: "Caption", name: "caption", multiline: true },
           { label: "Hashtags", name: "hashtags", multiline: false },
-          { label: "Tagged People", name: "tags", multiline: false },
           { label: "Location", name: "location", multiline: false },
-          { label: "Alt Text", name: "alt", multiline: false },
         ].map(({ label, name, multiline }) => (
           <div key={name}>
-            <label
-              htmlFor={name}
-              className="block mb-1 font-semibold text-gray-800"
-            >
+            <label htmlFor={name} className="block mb-1 font-semibold text-gray-800">
               {label}
             </label>
             {multiline ? (
@@ -176,7 +198,7 @@ const EditPost = () => {
           </div>
         ))}
 
-        {/* Image upload */}
+        {/* Image Upload */}
         <div>
           <label htmlFor="image" className="block mb-1 font-semibold text-gray-800">
             Image
@@ -190,7 +212,6 @@ const EditPost = () => {
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
           />
 
-          {/* Preview */}
           {post.image && (
             <div className="relative mt-4 inline-block rounded-lg overflow-hidden shadow-lg group cursor-pointer max-w-[160px]">
               <img
@@ -214,7 +235,7 @@ const EditPost = () => {
           )}
         </div>
 
-        {/* Submit button */}
+        {/* Submit Button */}
         <button
           type="submit"
           disabled={submitLoading}

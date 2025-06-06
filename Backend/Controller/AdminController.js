@@ -5,15 +5,20 @@ const Profile = require("../Models/Profile");
 
 const getAdminPost = asynchandler(async (req, res) => {
   const posts = await Post.find().populate('userId'); // if you want user details
-
+  const user = await User.find().populate('_id');
+  console.log(user);
   if (!posts || posts.length === 0) {
     res.status(404);
     throw new Error("No posts found");
   }
+  const email = user.email;
+
 
   res.status(200).json({
     message: "All posts fetched successfully",
     posts,
+    email
+    
   });
 });
 

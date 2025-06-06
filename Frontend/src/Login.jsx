@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { FiMail, FiLock } from "react-icons/fi";
-import api from "axios";
+import { FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 
 const Login = () => {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // 👁️ Toggle state
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -18,10 +18,10 @@ const Login = () => {
     setError("");
 
     try {
-      const res = await api.post("http://localhost:3000/api/user/login", form);
+      const res = await axios.post("http://localhost:3000/api/user/login", form);
       localStorage.setItem("token", res.data.token);
       alert("Login Successful");
-      navigate("/profile"); // Adjust route accordingly
+      navigate("/profile");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     }
@@ -39,6 +39,7 @@ const Login = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Email Input */}
           <div className="flex items-center bg-white/90 border border-indigo-400 rounded-full px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-300">
             <FiMail className="text-indigo-700 mr-3" />
             <input
@@ -52,19 +53,29 @@ const Login = () => {
             />
           </div>
 
-          <div className="flex items-center bg-white/90 border border-indigo-400 rounded-full px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-300">
-            <FiLock className="text-indigo-700 mr-3" />
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              className="w-full outline-none bg-transparent text-indigo-900 placeholder-indigo-600"
-              value={form.password}
-              onChange={handleChange}
-              required
-            />
+          {/* Password Input with Show/Hide */}
+          <div className="relative">
+            <div className="flex items-center bg-white/90 border border-indigo-400 rounded-full px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-indigo-300">
+              <FiLock className="text-indigo-700 mr-3" />
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Password"
+                className="w-full outline-none bg-transparent text-indigo-900 placeholder-indigo-600"
+                value={form.password}
+                onChange={handleChange}
+                required
+              />
+              <span
+                className="text-indigo-600 cursor-pointer ml-2"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <FiEyeOff /> : <FiEye />}
+              </span>
+            </div>
           </div>
 
+          {/* Login Button */}
           <button
             type="submit"
             className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-3 rounded-full font-semibold hover:opacity-90 transition"
@@ -79,13 +90,13 @@ const Login = () => {
             Register
           </a>
         </p>
+
         <button
           onClick={() => navigate("/Admin")}
           className="w-full mt-4 bg-gradient-to-r from-gray-500 to-gray-700 text-white py-3 rounded-full font-semibold hover:opacity-90 transition"
         >
           Go to Admin Page
         </button>
-
       </div>
     </div>
   );

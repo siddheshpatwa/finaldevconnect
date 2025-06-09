@@ -15,15 +15,52 @@ const Register = () => {
       email: '',
       password: '',
     },
-    validationSchema: Yup.object({
-     name: Yup.string()
-        .matches(/^[A-Za-z\s]+$/, 'Name should contain only letters and spaces')
-        .min(3, 'Name must be at least 3 characters')
-        .required('Name is required'),
-      email: Yup.string()
-        .email('Invalid email address')
-        .required('Email is required'),
-     password: Yup.string()
+//     validationSchema: Yup.object({
+//     username: Yup.string()
+//   .trim()
+//   .matches(/^[a-zA-Z0-9._\-@$#]+$/, 'Username can contain letters, numbers, and _ . - @ $ #')
+//   .min(3, 'Username must be at least 3 characters')
+//   .required('Username is required'),
+
+//       email: Yup.string()
+//         .email('Invalid email address')
+//         .required('Email is required'),
+//      password: Yup.string()
+//     .min(6, 'Password must be at least 6 characters')
+//     .matches(
+//       /[!@#$%^&*(),.?":{}|<>]/,
+//       'Password must contain at least one special character'
+//     )
+//     .required('Password is required'),
+// }),
+//     onSubmit: async (values) => {
+//       setIsSubmitting(true);
+//       try {
+//         const response = await axios.post('http://localhost:3000/api/user/register', values);
+//         const { token } = response.data;
+//         localStorage.setItem('token', token);
+//         setMessage('Registration successful!');
+//         navigate('/create-profile');
+//       } catch (error) {
+//         console.error('Registration error:', error);
+//         setMessage(error.response?.data?.message || 'Error occurred during registration');
+//       } finally {
+//         setIsSubmitting(false);
+//       }
+//     },
+validationSchema: Yup.object({
+  name: Yup.string()
+    .trim()
+    .matches(
+      /^[a-zA-Z0-9._\-@$#]+$/,
+      'Username can contain letters, numbers, and _ . - @ $ #'
+    )
+    .min(3, 'Username must be at least 3 characters')
+    .required('Username is required'),
+  email: Yup.string()
+    .email('Invalid email address')
+    .required('Email is required'),
+  password: Yup.string()
     .min(6, 'Password must be at least 6 characters')
     .matches(
       /[!@#$%^&*(),.?":{}|<>]/,
@@ -31,22 +68,26 @@ const Register = () => {
     )
     .required('Password is required'),
 }),
-    onSubmit: async (values) => {
-      setIsSubmitting(true);
-      try {
-        const response = await axios.post('http://localhost:3000/api/user/register', values);
-        const { token } = response.data;
-        localStorage.setItem('token', token);
-        setMessage('Registration successful!');
-        navigate('/create-profile');
-      } catch (error) {
-        console.error('Registration error:', error);
-        setMessage(error.response?.data?.message || 'Error occurred during registration');
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-  });
+onSubmit: async (values) => {
+  setIsSubmitting(true);
+  console.log("Submitting values:", values); // ✅ Debug log
+  try {
+    const response = await axios.post('http://localhost:3000/api/user/register', values);
+    console.log("Response from server:", response); // ✅ Debug log
+    const { token } = response.data;
+    localStorage.setItem('token', token);
+    setMessage('Registration successful!');
+    navigate('/create-profile');
+  } catch (error) {
+    console.error('Registration error:', error);
+    setMessage(error.response?.data?.message || 'Error occurred during registration');
+  } finally {
+    setIsSubmitting(false);
+  }
+}
+
+  }
+);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">

@@ -3,7 +3,7 @@ const profileRouter = express.Router();
 // const upload = require("../Middleware/Multer");
 const validateTokenHeader = require("../Middleware/Validatetokenheader");
 const { createProfile,updateProfile,getProfile, searchProfiles, getPublicProfileAndPosts, uploadProfileImage, } = require("../Controller/ProfileController");
-const { createPost,updatePost, getPost ,getPostData,viewPost, deletePost,likePost, getLikeCount, commentPost } = require("../Controller/PostController");
+const { createPost,updatePost, getPost ,getPostData,viewPost, deletePost,likePost, getLikeCount, commentPost, getAllPost } = require("../Controller/PostController");
 const upload = require("../Middleware/Multer");
 
 profileRouter.post("/create",validateTokenHeader, createProfile);
@@ -23,4 +23,6 @@ profileRouter.post("/like/:postId", validateTokenHeader,likePost);
 profileRouter.get("/like_count/:postId", validateTokenHeader, getLikeCount);
 profileRouter.get("/public-profile/:userId", validateTokenHeader, getPublicProfileAndPosts );
 profileRouter.post("/comment/:id", validateTokenHeader, commentPost);
+profileRouter.get("/getAllPost", validateTokenHeader, getAllPost);
+
 module.exports = profileRouter;

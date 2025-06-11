@@ -171,10 +171,20 @@ const likePost = asynchandler(async (req, res) => {
     }
 
     await post.save();
+    user = await User.findById(req.user._id);
+    if (!user) {        
+        res.status(404);
+        throw new Error("User not found");
+    }
 
     res.status(200).json({
         message: "Post liked/unliked successfully",
         likes: post.likes,
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email
+        }
     });
 });
 
@@ -219,6 +229,27 @@ const commentPost = asynchandler(async (req, res) => {
         comments: post.comments,
     });
 });
+
+
+const getAllPost = asynchandler(async (req, res) => {
+  const posts = await Post.find().populate('userId'); // if you want user details
+  const user = await User.find().populate('_id');
+  console.log(user);
+  if (!posts || posts.length === 0) {
+    res.status(404);
+    throw new Error("No posts found");
+  }
+  const email = user.email;
+
+
+  res.status(200).json({
+    message: "All posts fetched successfully",
+    posts,
+    email
+    
+  });
+});
+
 module.exports = {
     createPost,
     updatePost,
@@ -228,5 +259,6 @@ module.exports = {
     deletePost,
     likePost,
     getLikeCount,
-    commentPost
+    commentPost,
+    getAllPost
 }

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import api from "axios";
+import { jwtDecode } from "jwt-decode";
+import { FiHeart ,FiChevronDown,FiChevronUp} from "react-icons/fi";
 
 const defaultAvatar = "https://www.w3schools.com/howto/img_avatar.png";
 
@@ -9,11 +11,10 @@ const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [errorProfile, setErrorProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
-
-
+ const [commentInputs, setCommentInputs] = useState({});
+    const [showComments, setShowComments] = useState({});
   const [posts, setPosts] = useState([]);
   const [openMenuId, setOpenMenuId] = useState(null);
-  const [commentInputs, setCommentInputs] = useState({});
 
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [errorPosts, setErrorPosts] = useState(null);
@@ -25,6 +26,9 @@ const ProfilePage = () => {
   const [previewImage, setPreviewImage] = useState(profile?.image || defaultAvatar);
   // const [selectedImage, setSelectedImage] = useState(null);
   const navigate = useNavigate();
+  const token2 = localStorage.getItem("token");
+  const decoded = token2 ? jwtDecode(token2) : null;
+  const userId = decoded?.id;
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -62,10 +66,9 @@ const ProfilePage = () => {
           hashtags: post.hashtags || "",
           taggedPeople: post.tags || "",
           altText: post.alt || "",
-          likes: post.likes || 0,
+          // Ensure 'likes' is an array to match the backend's expected structure for includes()
+          likes: post.likes || [],
         }));
-        // console.log("Fetched posts:", postsWithExtras);
-
         setPosts(postsWithExtras);
       } catch (err) {
         setErrorPosts(err.response?.data?.message || err.message);
@@ -121,6 +124,47 @@ const ProfilePage = () => {
     localStorage.removeItem("token");
     navigate("/login");
   };
+   const toggleComments = (id) => {
+      setShowComments((prev) => ({ ...prev, [id]: !prev[id] }));
+    };
+    
+
+    const handleCommentSubmit = async (e, postId) => {
+      e.preventDefault();
+      const commentText = commentInputs[postId]?.trim();
+      if (!commentText) return;
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Please login to comment.");
+        navigate("/login");
+        return;
+      }
+      try {
+        const response = await axios.post(
+          `http://localhost:3000/api/user/profile/comment/${postId}`,
+          { comment: commentText },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const updatedComments = response.data.comments;
+
+        setPosts((prev) =>
+          prev.map((post) =>
+            post._id === postId ? { ...post, comments: updatedComments } : post
+          )
+        );
+
+        setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
+      } catch (error) {
+        console.error("Failed to post comment:", error);
+        alert(error.response?.data?.message || "Failed to post comment.");
+      }
+    };
+
 
   const toggleLike = async (postId) => {
     const token = localStorage.getItem("token");
@@ -130,17 +174,22 @@ const ProfilePage = () => {
       return;
     }
 
+
     // Optimistically update the UI
     setPosts((prev) =>
-      prev.map((p) =>
-        p._id === postId
-          ? {
+      prev.map((p) => {
+        if (p._id === postId) {
+          const isLiked = p.likes.includes(userId);
+          const newLikes = isLiked
+            ? p.likes.filter((id) => id !== userId)
+            : [...p.likes, userId];
+          return {
             ...p,
-            liked: !p.liked,
-            likes: p.liked ? p.likes - 1 : p.likes + 1,
-          }
-          : p
-      )
+            likes: newLikes,
+          };
+        }
+        return p;
+      })
     );
 
     try {
@@ -151,7 +200,6 @@ const ProfilePage = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      // console.log("✅ Like/Unlike response:", res.data);
 
       const updatedLikes = res.data.likes || [];
 
@@ -160,73 +208,34 @@ const ProfilePage = () => {
         prev.map((p) =>
           p._id === postId
             ? {
-              ...p,
-              liked: updatedLikes.includes(profile._id),
-              likes: updatedLikes,
-            }
+                ...p,
+                likes: updatedLikes,
+              }
             : p
         )
       );
     } catch (err) {
       alert(err.response?.data?.message || "Failed to like/unlike post.");
 
-      // Revert the optimistic update
+      // Revert the optimistic update if an error occurs
       setPosts((prev) =>
-        prev.map((p) =>
-          p._id === postId
-            ? {
+        prev.map((p) => {
+          if (p._id === postId) {
+            // Revert likes to the state before the optimistic update
+            const isLiked = p.likes.includes(userId);
+            const revertedLikes = isLiked
+              ? p.likes.filter((id) => id !== userId)
+              : [...p.likes, userId];
+            return {
               ...p,
-              liked: p.liked, // fallback to original state (same value as before)
-              likes: p.likes, // fallback to original state
-            }
-            : p
-        )
+              likes: revertedLikes,
+            };
+          }
+          return p;
+        })
       );
     }
   };
-
-
-  const handleComment = async (postId, commentText) => {
-    try {
-      // console.log("Posting comment:", commentText, "for post:", postId);
-
-      const token = localStorage.getItem("token");
-      if (!token) {
-        alert("Please login to comment on posts.");
-        navigate("/login");
-        return;
-      }
-
-      const res = await api.post(
-        `http://localhost:3000/api/user/profile/comment/${postId}`,
-        { comment: commentText },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      const newComment = res.data.comment; // Ensure backend sends back the created comment
-
-      // 🔄 Update state locally
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post._id === postId
-            ? {
-              ...post,
-              comments: [...post.comments, newComment],
-            }
-            : post
-        )
-      );
-
-      // console.log("Comment posted and state updated.");
-
-    } catch (error) {
-      alert(error.response?.data?.message || "Failed to comment on post.");
-      // console.error("Error commenting on post:", error);
-    }
-  };
-
 
   const handleDeletePost = async (postId) => {
     if (!window.confirm("Are you sure you want to delete this post?")) return;
@@ -242,33 +251,32 @@ const ProfilePage = () => {
     }
   };
   const handleImageUpload = async () => {
-  if (!selectedImage) return alert("Please select an image");
+    if (!selectedImage) return alert("Please select an image");
 
-  const token = localStorage.getItem("token");
-  const formData = new FormData();
-  formData.append("image", selectedImage);
+    const token = localStorage.getItem("token");
+    const formData = new FormData();
+    formData.append("image", selectedImage);
 
-  try {
-    const res = await api.post(
-      "http://localhost:3000/api/user/profile/upload-image", // adjust if your endpoint differs
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    try {
+      const res = await api.post(
+        "http://localhost:3000/api/user/profile/upload-image", // adjust if your endpoint differs
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    // Optionally update state with uploaded image URL from backend
-    setPreviewImage(res.data.image);
-    alert("Profile image uploaded successfully!");
-  } catch (error) {
-    console.error("Upload error:", error);
-    alert(error.response?.data?.message || "Failed to upload image");
-  }
-};
-
+      // Optionally update state with uploaded image URL from backend
+      setPreviewImage(res.data.image);
+      alert("Profile image uploaded successfully!");
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert(error.response?.data?.message || "Failed to upload image");
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10 font-sans bg-gradient-to-r via-white min-h-screen">
@@ -324,28 +332,12 @@ const ProfilePage = () => {
             className="w-36 h-36 rounded-full border-8 border-cyan-400 shadow-lg object-cover mx-auto"
           />
 
-          
           <h1 className="text-4xl font-extrabold text-cyan-700 tracking-wide">{profile.name}</h1>
           <p className="text-cyan-500 font-medium">{profile.email}</p>
           <p className="text-gray-700 italic max-w-xl mx-auto">{profile.bio || "No bio available."}</p>
           <p className="text-cyan-600 font-semibold">
             <span className="underline">Skills:</span> {profile.skills?.join(", ") || "None"}
           </p>
-          {/* <div className="flex justify-center flex-wrap gap-6 mt-4">
-            {profile.socialLinks && 
-              Object.entries(profile.socialLinks).map(([key, url]) => (
-                <a
-                  key={key}
-                  href={url || "" }
-                  // {console.log("Social link:", key, url)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-cyan-600 hover:text-cyan-800 transition font-semibold uppercase tracking-wide"
-                >
-                  {key}
-                </a>
-              ))}{console.log("Social Links:", profile.socialLinks)}
-          </div> */}
           <div className="flex justify-center flex-wrap gap-6 mt-4">
             {profile.socialLinks &&
               Object.entries(profile.socialLinks)
@@ -361,7 +353,6 @@ const ProfilePage = () => {
                     {key}
                   </a>
                 ))}
-            {/* {console.log("Social Links:", profile.socialLinks)} */}
           </div>
 
           <div className="flex justify-center space-x-6 mt-8">
@@ -440,16 +431,88 @@ const ProfilePage = () => {
               <p className="text-sm text-cyan-500 font-medium">Hashtags: {post.hashtags || "None"}</p>
 
               <div className="flex items-center justify-between mt-4">
-                <button
-                  onClick={() => toggleLike(post._id)}
-                  className={`font-bold text-sm transition ${post.liked ? "text-pink-600" : "text-gray-500"
-                    }`}
-                >
-                  {post.liked ? "♥ Liked" : "♡ Like"}
-                </button>
-                <span className="text-cyan-500 font-medium">
-                  {post.likes.length} {post.likes.length === 1 ? "like" : "likes"}
-                </span>
+                <div className="action-row">
+                  <div
+                    className={`like-btn ${post.likes.includes(userId) ? "text-pink-600" : "text-gray-500"}`}
+                    onClick={() => toggleLike(post._id)}
+                  >
+                    <FiHeart className="inline-block mr-1" />
+                    {post.likes.includes(userId) ? "Liked" : "Like"}
+                  </div>
+                  <span className="likes-count text-cyan-500 font-medium">
+                    {post.likes.length} {post.likes.length === 1 ? "like" : "likes"}
+                  </span>
+                </div>
+
+                {/*comment section*/}
+                        <div className="comments-section">
+                          <div className="flex justify-between items-center">
+                            <h3 className="text-indigo-500 dark:text-indigo-300 font-semibold">
+                              Comments ({post.comments.length})
+                            </h3>
+                            <button
+                              onClick={() => toggleComments(post._id)}
+                              className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300 flex items-center gap-1"
+                            >
+                              {showComments[post._id] ? (
+                                <>
+                                  <FiChevronUp /> Hide
+                                </>
+                              ) : (
+                                <>
+                                  <FiChevronDown /> Show
+                                </>
+                              )}
+                            </button>
+                          </div>
+                
+                          {showComments[post._id] && (
+                            <>
+                              {post.comments.length === 0 ? (
+                                <p className="text-gray-500 italic mb-4 dark:text-gray-400">
+                                  No comments yet.
+                                </p>
+                              ) : (
+                                post.comments.map((comment) => (
+                                  <div key={comment._id} className="comment mt-3">
+                                    <p className="comment-name">{comment.name}</p>
+                                    <p className="comment-text">{comment.text}</p>
+                                    <p className="comment-meta">
+                                      {new Date(comment.createdAt).toLocaleString()}
+                                    </p>
+                                  </div>
+                                ))
+                              )}
+                
+                              <form
+                                onSubmit={(e) => handleCommentSubmit(e, post._id)}
+                                className="flex space-x-3 mt-2"
+                              >
+                                <input
+                                  type="text"
+                                  placeholder="Add a comment..."
+                                  value={commentInputs[post._id] || ""}
+                                  onChange={(e) =>
+                                    setCommentInputs((prev) => ({
+                                      ...prev,
+                                      [post._id]: e.target.value,
+                                    }))
+                                  }
+                                  className="flex-grow border border-cyan-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                                  required
+                                />
+                                <button
+                                  type="submit"
+                                  disabled={!commentInputs[post._id]?.trim()}
+                                  className="bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-5 py-2 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  Post
+                                </button>
+                              </form>
+                            </>
+                          )}
+                        </div>
+
                 <button
                   onClick={() => handleDeletePost(post._id)}
                   className="bg-red-100 hover:bg-red-200 text-red-600 font-semibold text-sm px-4 py-2 rounded-full"
@@ -457,108 +520,10 @@ const ProfilePage = () => {
                   Delete
                 </button>
               </div>
-
-              {/* Comments Section */}
-              <div className="mt-6">
-                <h3 className="text-cyan-700 font-semibold mb-2">
-                  Comments ({post.comments?.length || 0})
-                </h3>
-
-                {/* Existing Comments */}
-                {post.comments && post.comments.length > 0 ? (
-                  <ul className="max-h-40 overflow-y-auto space-y-3 mb-4">
-                    {post.comments.map((comment, index) => {
-                      if (!comment || typeof comment !== "object") return null;
-                      return (
-                        <li
-                          key={comment._id || comment.createdAt || index}
-                          className="border rounded-lg p-3 bg-cyan-50"
-                        >
-                          <p className="text-sm font-medium text-cyan-700">{comment.name}</p>
-                          <p className="text-gray-700">{comment.text}</p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            {new Date(comment.createdAt).toLocaleString()}
-                          </p>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <p className="text-gray-400 italic mb-4">
-                    No comments yet. Be the first to comment!
-                  </p>
-                )}
-
-                {/* Add Comment Input */}
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    console.log("Submitting comment for post:");
-                    const commentText = commentInputs[post._id]?.trim();
-                    if (!commentText) return;
-
-                    const token = localStorage.getItem("token");
-                    if (!token) {
-                      alert("Please login to comment.");
-                      navigate("/login");
-                      return;
-                    }
-
-                    try {
-                      const res = await api.post(
-                        `http://localhost:3000/api/user/profile/comment/${post._id}`,
-                        { comment: commentText },
-                        {
-                          headers: { Authorization: `Bearer ${token}` },
-                        }
-                      );
-
-                      const newComment = res.data.comment; // Adjust if your API returns differently
-
-                      // Immediately update the local post state with the new comment
-                      setPosts((prevPosts) =>
-                        prevPosts.map((p) =>
-                          p._id === post._id
-                            ? { ...p, comments: [...p.comments, newComment] }
-                            : p
-                        )
-                      );
-
-                      // Clear the input
-                      setCommentInputs((prev) => ({ ...prev, [post._id]: "" }));
-                    } catch (error) {
-                      alert(error.response?.data?.message || "Failed to comment.");
-                      console.error(error);
-                    }
-                  }}
-                  className="flex space-x-3"
-                >
-                  <input
-                    type="text"
-                    placeholder="Add a comment..."
-                    value={commentInputs[post._id] || ""}
-                    onChange={(e) =>
-                      setCommentInputs((prev) => ({ ...prev, [post._id]: e.target.value }))
-                    }
-                    className="flex-grow border border-cyan-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    className="bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-5 py-2 font-semibold transition"
-                  >
-                    Post
-                  </button>
-                </form>
-              </div>
-
-
-
             </div>
           ))
         )}
       </section>
-
     </div>
   );
 };

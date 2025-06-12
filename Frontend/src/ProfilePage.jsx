@@ -3,7 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import api from "axios";
 import { jwtDecode } from "jwt-decode";
-import { FiHeart ,FiChevronDown,FiChevronUp} from "react-icons/fi";
+import { FiHeart, FiChevronDown, FiChevronUp } from "react-icons/fi";
 
 const defaultAvatar = "https://www.w3schools.com/howto/img_avatar.png";
 
@@ -11,8 +11,8 @@ const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [errorProfile, setErrorProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
- const [commentInputs, setCommentInputs] = useState({});
-    const [showComments, setShowComments] = useState({});
+  const [commentInputs, setCommentInputs] = useState({});
+  const [showComments, setShowComments] = useState({});
   const [posts, setPosts] = useState([]);
   const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -124,46 +124,46 @@ const ProfilePage = () => {
     localStorage.removeItem("token");
     navigate("/login");
   };
-   const toggleComments = (id) => {
-      setShowComments((prev) => ({ ...prev, [id]: !prev[id] }));
-    };
-    
+  const toggleComments = (id) => {
+    setShowComments((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
-    const handleCommentSubmit = async (e, postId) => {
-      e.preventDefault();
-      const commentText = commentInputs[postId]?.trim();
-      if (!commentText) return;
-      const token = localStorage.getItem("token");
-      if (!token) {
-        alert("Please login to comment.");
-        navigate("/login");
-        return;
-      }
-      try {
-        const response = await axios.post(
-          `http://localhost:3000/api/user/profile/comment/${postId}`,
-          { comment: commentText },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
 
-        const updatedComments = response.data.comments;
+  const handleCommentSubmit = async (e, postId) => {
+    e.preventDefault();
+    const commentText = commentInputs[postId]?.trim();
+    if (!commentText) return;
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please login to comment.");
+      navigate("/login");
+      return;
+    }
+    try {
+      const response = await axios.post(
+        `http://localhost:3000/api/user/profile/comment/${postId}`,
+        { comment: commentText },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-        setPosts((prev) =>
-          prev.map((post) =>
-            post._id === postId ? { ...post, comments: updatedComments } : post
-          )
-        );
+      const updatedComments = response.data.comments;
 
-        setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
-      } catch (error) {
-        console.error("Failed to post comment:", error);
-        alert(error.response?.data?.message || "Failed to post comment.");
-      }
-    };
+      setPosts((prev) =>
+        prev.map((post) =>
+          post._id === postId ? { ...post, comments: updatedComments } : post
+        )
+      );
+
+      setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
+    } catch (error) {
+      console.error("Failed to post comment:", error);
+      alert(error.response?.data?.message || "Failed to post comment.");
+    }
+  };
 
 
   const toggleLike = async (postId) => {
@@ -208,9 +208,9 @@ const ProfilePage = () => {
         prev.map((p) =>
           p._id === postId
             ? {
-                ...p,
-                likes: updatedLikes,
-              }
+              ...p,
+              likes: updatedLikes,
+            }
             : p
         )
       );
@@ -379,7 +379,7 @@ const ProfilePage = () => {
         </h2>
         <button
           onClick={() => navigate("/create-post")}
-          className="bg-cyan-500 hover:bg-cyan-600 text-white font-semibold px-5 py-2 rounded-full shadow-md transition mb-4 ml-[700px]"
+          className="bg-cyan-500 hover:bg-cyan-600 text-white font-semibold px-5 py-2 rounded-full shadow-md transition mb-4 ml-auto block"
         >
           + Create New Post
         </button>
@@ -394,7 +394,7 @@ const ProfilePage = () => {
           posts.map((post) => (
             <div
               key={post._id}
-              className="bg-white shadow-lg rounded-2xl p-6 space-y-4 border border-cyan-100"
+              className="bg-white shadow-lg rounded-2xl p-6 space-y-4 border border-cyan-100 dark:bg-gray-900"
             >
               {/* Menu Button */}
               <div className="relative">
@@ -406,124 +406,132 @@ const ProfilePage = () => {
                 </button>
 
                 {openMenuId === post._id && (
-                  <div className="absolute top-10 right-3 bg-white border border-gray-200 shadow-lg rounded-lg z-10">
+                  <div className="absolute top-10 right-3 bg-white border border-gray-200 shadow-lg rounded-lg z-10 dark:bg-gray-800">
                     <button
                       onClick={() => {
                         setOpenMenuId(null);
                         navigate(`/edit-post/${post._id}`);
                       }}
-                      className="block px-4 py-2 text-sm text-cyan-700 hover:bg-cyan-50 w-full text-left"
+                      className="block px-4 py-2 text-sm text-cyan-700 hover:bg-cyan-50 dark:hover:bg-gray-700 w-full text-left"
                     >
                       ✏️ Edit Post
                     </button>
                   </div>
                 )}
               </div>
-              <p className="text-gray-700 font-semibold text-lg">{post.title}</p>
+
+              <p className="text-gray-700 dark:text-gray-100 font-semibold text-lg">{post.title}</p>
               <img
                 src={post.image || defaultAvatar}
                 alt={post.alt || "Post Image"}
                 className="w-full h-64 object-cover rounded-xl"
               />
-              <p className="text-gray-700">{post.description}</p>
+              <p className="text-gray-700 dark:text-gray-300">{post.description}</p>
               <p className="text-sm text-cyan-500 font-medium">Location: {post.location || "None"}</p>
               <p className="text-sm text-cyan-500 font-medium">Caption: {post.caption || "None"}</p>
               <p className="text-sm text-cyan-500 font-medium">Hashtags: {post.hashtags || "None"}</p>
 
-              <div className="flex items-center justify-between mt-4">
-                <div className="action-row">
-                  <div
-                    className={`like-btn ${post.likes.includes(userId) ? "text-pink-600" : "text-gray-500"}`}
+              {/* Likes / Comments / Delete Actions */}
+              <div className="flex items-center justify-between mt-4 border-t pt-4 border-cyan-100 dark:border-gray-700">
+                {/* Like and Count */}
+                <div className="flex items-center gap-4">
+                  <button
                     onClick={() => toggleLike(post._id)}
+                    className={`flex items-center gap-1 text-sm font-medium transition duration-200 ${post.likes.includes(userId) ? "text-pink-600" : "text-gray-500 hover:text-pink-500"
+                      }`}
                   >
-                    <FiHeart className="inline-block mr-1" />
+                    <FiHeart className="text-lg" />
                     {post.likes.includes(userId) ? "Liked" : "Like"}
-                  </div>
-                  <span className="likes-count text-cyan-500 font-medium">
+                  </button>
+                  <span className="text-cyan-500 text-sm">
                     {post.likes.length} {post.likes.length === 1 ? "like" : "likes"}
                   </span>
                 </div>
 
-                {/*comment section*/}
-                        <div className="comments-section">
-                          <div className="flex justify-between items-center">
-                            <h3 className="text-indigo-500 dark:text-indigo-300 font-semibold">
-                              Comments ({post.comments.length})
-                            </h3>
-                            <button
-                              onClick={() => toggleComments(post._id)}
-                              className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-300 flex items-center gap-1"
-                            >
-                              {showComments[post._id] ? (
-                                <>
-                                  <FiChevronUp /> Hide
-                                </>
-                              ) : (
-                                <>
-                                  <FiChevronDown /> Show
-                                </>
-                              )}
-                            </button>
-                          </div>
-                
-                          {showComments[post._id] && (
-                            <>
-                              {post.comments.length === 0 ? (
-                                <p className="text-gray-500 italic mb-4 dark:text-gray-400">
-                                  No comments yet.
-                                </p>
-                              ) : (
-                                post.comments.map((comment) => (
-                                  <div key={comment._id} className="comment mt-3">
-                                    <p className="comment-name">{comment.name}</p>
-                                    <p className="comment-text">{comment.text}</p>
-                                    <p className="comment-meta">
-                                      {new Date(comment.createdAt).toLocaleString()}
-                                    </p>
-                                  </div>
-                                ))
-                              )}
-                
-                              <form
-                                onSubmit={(e) => handleCommentSubmit(e, post._id)}
-                                className="flex space-x-3 mt-2"
-                              >
-                                <input
-                                  type="text"
-                                  placeholder="Add a comment..."
-                                  value={commentInputs[post._id] || ""}
-                                  onChange={(e) =>
-                                    setCommentInputs((prev) => ({
-                                      ...prev,
-                                      [post._id]: e.target.value,
-                                    }))
-                                  }
-                                  className="flex-grow border border-cyan-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                                  required
-                                />
-                                <button
-                                  type="submit"
-                                  disabled={!commentInputs[post._id]?.trim()}
-                                  className="bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-5 py-2 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  Post
-                                </button>
-                              </form>
-                            </>
-                          )}
-                        </div>
+                {/* Comment Toggle + Delete */}
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => toggleComments(post._id)}
+                    className="flex items-center text-sm text-gray-600 hover:text-indigo-500 dark:text-gray-400 dark:hover:text-indigo-300 transition duration-200"
+                  >
+                    {showComments[post._id] ? (
+                      <>
+                        <FiChevronUp className="mr-1" /> Hide Comments
+                      </>
+                    ) : (
+                      <>
+                        <FiChevronDown className="mr-1" /> Show Comments
+                      </>
+                    )}
+                  </button>
 
-                <button
-                  onClick={() => handleDeletePost(post._id)}
-                  className="bg-red-100 hover:bg-red-200 text-red-600 font-semibold text-sm px-4 py-2 rounded-full"
-                >
-                  Delete
-                </button>
+                  <button
+                    onClick={() => handleDeletePost(post._id)}
+                    className="bg-red-100 hover:bg-red-200 text-red-600 font-semibold text-sm px-4 py-2 rounded-full transition duration-200"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
+
+              {/* Comment Section */}
+              {showComments[post._id] && (
+                <div className="mt-4 space-y-4">
+                  {post.comments.length === 0 ? (
+                    <p className="text-gray-500 italic dark:text-gray-400">No comments yet.</p>
+                  ) : (
+                    <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                      {post.comments.map((comment) => (
+                        <div
+                          key={comment._id}
+                          className="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700"
+                        >
+                          <p className="text-sm font-semibold text-gray-700 dark:text-gray-100">
+                            {comment.name}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">{comment.text}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">
+                            {new Date(comment.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                  )}
+
+                  {/* Comment Form */}
+                  <form
+                    onSubmit={(e) => handleCommentSubmit(e, post._id)}
+                    className="flex space-x-3 items-center"
+                  >
+                    <input
+                      type="text"
+                      placeholder="Add a comment..."
+                      value={commentInputs[post._id] || ""}
+                      onChange={(e) =>
+                        setCommentInputs((prev) => ({
+                          ...prev,
+                          [post._id]: e.target.value,
+                        }))
+                      }
+                      className="flex-grow border border-cyan-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      disabled={!commentInputs[post._id]?.trim()}
+                      className="bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-5 py-2 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Post
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
           ))
         )}
       </section>
+
     </div>
   );
 };

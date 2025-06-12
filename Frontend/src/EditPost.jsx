@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import api from "axios";
+import { MdOutlineImageNotSupported } from "react-icons/md"; // For image preview placeholder
 
 const EditPost = () => {
   const { id } = useParams();
@@ -13,22 +13,19 @@ const EditPost = () => {
     caption: "",
     hashtags: "",
     location: "",
-    image: "",
+    image: null, // Stores File object or URL string
+    originalImageUrl: null, // Stores original URL for existing image
   });
 
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [error, setError] = useState("");
-  const [formErrors, setFormErrors] = useState({});
   const token = localStorage.getItem("token");
-
-  const isValidText = (text) => /^[A-Za-z\s]+$/.test(text);
-  const isValidHashtags = (text) => /^#([A-Za-z]+)( #[A-Za-z]+)*$/.test(text);
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const res = await api.get(
+        const res = await axios.get(
           `http://localhost:3000/api/user/profile/post_get/${id}`,
           {
             headers: {
@@ -43,11 +40,12 @@ const EditPost = () => {
           caption: data.caption ?? "",
           hashtags: data.hashtags ?? "",
           location: data.location ?? "",
-          image: data.img?.[0] ?? "",
+          image: data.img?.[0] || null,
+          originalImageUrl: data.img?.[0] || null,
         });
       } catch (err) {
         console.error("Error fetching post:", err);
-        setError("Failed to load post.");
+        setError("Failed to load post. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -57,75 +55,44 @@ const EditPost = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const textFields = ["title", "desc", "caption", "location"];
-    if (textFields.includes(name)) {
-      if (!/^[A-Za-z\s]*$/.test(value)) return;
-    }
-    if (name === "hashtags") {
-      if (!/^#([A-Za-z]+)?( #[A-Za-z]+)*$/.test(value) && value !== "") return;
-    }
-
     setPost((prevPost) => ({ ...prevPost, [name]: value }));
-    if (formErrors[name]) setFormErrors((fe) => ({ ...fe, [name]: "" }));
   };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    setPost((prevPost) => ({ ...prevPost, image: file }));
+    if (file) {
+      setPost((prevPost) => ({ ...prevPost, image: file }));
+    } else {
+      // If user cancels file selection, revert to original image if it exists
+      setPost((prevPost) => ({ ...prevPost, image: post.originalImageUrl }));
+    }
   };
 
-  const validateForm = () => {
-    const errors = {};
-    if (!post.title.trim()) {
-      errors.title = "Title is required.";
-    } else if (!isValidText(post.title)) {
-      errors.title = "Title must contain only letters and spaces.";
-    }
-
-    if (!post.desc.trim()) {
-      errors.desc = "Description is required.";
-    } else if (!isValidText(post.desc)) {
-      errors.desc = "Description must contain only letters and spaces.";
-    }
-
-    if (post.caption && !isValidText(post.caption)) {
-      errors.caption = "Caption must contain only letters and spaces.";
-    }
-
-    if (post.location && !isValidText(post.location)) {
-      errors.location = "Location must contain only letters and spaces.";
-    }
-
-    if (post.hashtags && !isValidHashtags(post.hashtags)) {
-      errors.hashtags = "Hashtags must start with # and contain only letters.";
-    }
-
-    return errors;
+  const handleRemoveImage = () => {
+    setPost((prev) => ({ ...prev, image: null }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const errors = validateForm();
-    if (Object.keys(errors).length) {
-      setFormErrors(errors);
-      return;
-    }
-
     setSubmitLoading(true);
 
     const formData = new FormData();
-    formData.append("title", post.title ?? "");
-    formData.append("desc", post.desc ?? "");
-    formData.append("caption", post.caption ?? "");
-    formData.append("hashtags", post.hashtags ?? "");
-    formData.append("location", post.location ?? "");
+    formData.append("title", post.title);
+    formData.append("desc", post.desc);
+    formData.append("caption", post.caption);
+    formData.append("hashtags", post.hashtags);
+    formData.append("location", post.location);
 
     if (post.image && typeof post.image !== "string") {
+      // If a new file was selected
       formData.append("image", post.image);
+    } else if (post.image === null && post.originalImageUrl) {
+      // If image was explicitly removed by the user
+      formData.append("removeImage", "true");
     }
 
     try {
-      await api.put(
+      await axios.put(
         `http://localhost:3000/api/user/profile/post_u/${id}`,
         formData,
         {
@@ -135,24 +102,38 @@ const EditPost = () => {
           },
         }
       );
-      alert("Post updated successfully");
+      alert("Post updated successfully!");
       navigate("/profile");
     } catch (err) {
-      console.error("Error updating post:", err);
-      alert("Error updating post");
+      console.error("Error updating post:", err.response?.data?.message || err.message);
+      alert(err.response?.data?.message || "Error updating post. Please try again.");
     } finally {
       setSubmitLoading(false);
     }
   };
 
   if (loading)
-    return <p className="text-center mt-8 text-lg font-medium">Loading post...</p>;
+    return (
+      <div className="flex justify-center items-center h-screen bg-gray-50">
+        <p className="text-center text-xl font-medium text-indigo-500 animate-pulse">Loading post...</p>
+      </div>
+    );
   if (error)
-    return <p className="text-center mt-8 text-red-600 font-semibold">{error}</p>;
+    return (
+      <div className="flex justify-center items-center h-screen bg-gray-50">
+        <p className="text-center text-xl font-semibold text-red-600">{error}</p>
+      </div>
+    );
+
+  const currentImageSrc = post.image
+    ? typeof post.image === "string"
+      ? post.image
+      : URL.createObjectURL(post.image)
+    : null;
 
   return (
-    <div className="max-w-2xl mx-auto p-8 bg-white rounded-xl shadow-lg mt-10">
-      <h2 className="text-3xl font-bold mb-8 text-indigo-700">Edit Post</h2>
+    <div className="max-w-2xl mx-auto p-8 bg-white rounded-xl shadow-lg mt-10 mb-10 border border-indigo-100">
+      <h2 className="text-3xl font-bold mb-8 text-center text-indigo-700">Edit Post</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Form Fields */}
@@ -160,11 +141,11 @@ const EditPost = () => {
           { label: "Title", name: "title", multiline: false },
           { label: "Description", name: "desc", multiline: true },
           { label: "Caption", name: "caption", multiline: true },
-          { label: "Hashtags", name: "hashtags", multiline: false },
+          { label: "Hashtags (e.g., #react #webdev)", name: "hashtags", multiline: false },
           { label: "Location", name: "location", multiline: false },
-        ].map(({ label, name, multiline }) => (
+        ].map(({ label, name, multiline, placeholder }) => (
           <div key={name}>
-            <label htmlFor={name} className="block mb-1 font-semibold text-gray-800">
+            <label htmlFor={name} className="block mb-2 font-semibold text-gray-800">
               {label}
             </label>
             {multiline ? (
@@ -174,10 +155,8 @@ const EditPost = () => {
                 rows={3}
                 value={post[name]}
                 onChange={handleChange}
-                placeholder={`Enter ${label.toLowerCase()}`}
-                className={`w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition ${
-                  formErrors[name] ? "border-red-500" : "border-gray-300"
-                }`}
+                placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 ease-in-out border-gray-300"
               />
             ) : (
               <input
@@ -186,21 +165,16 @@ const EditPost = () => {
                 name={name}
                 value={post[name]}
                 onChange={handleChange}
-                placeholder={`Enter ${label.toLowerCase()}`}
-                className={`w-full border rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition ${
-                  formErrors[name] ? "border-red-500" : "border-gray-300"
-                }`}
+                placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 ease-in-out border-gray-300"
               />
-            )}
-            {formErrors[name] && (
-              <p className="text-red-600 text-sm mt-1">{formErrors[name]}</p>
             )}
           </div>
         ))}
 
         {/* Image Upload */}
         <div>
-          <label htmlFor="image" className="block mb-1 font-semibold text-gray-800">
+          <label htmlFor="image" className="block mb-2 font-semibold text-gray-800">
             Image
           </label>
           <input
@@ -209,28 +183,31 @@ const EditPost = () => {
             id="image"
             accept="image/*"
             onChange={handleFileChange}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            className="w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition duration-200 ease-in-out"
           />
 
-          {post.image && (
-            <div className="relative mt-4 inline-block rounded-lg overflow-hidden shadow-lg group cursor-pointer max-w-[160px]">
+          {currentImageSrc && (
+            <div className="relative mt-4 inline-block rounded-lg overflow-hidden shadow-lg group cursor-pointer max-w-[200px] w-full">
               <img
-                src={
-                  typeof post.image === "string"
-                    ? post.image
-                    : URL.createObjectURL(post.image)
-                }
-                alt="Preview"
-                className="object-cover w-full h-32 group-hover:scale-110 transition-transform duration-300"
+                src={currentImageSrc}
+                alt="Post Preview"
+                className="object-cover w-full h-32 md:h-48 group-hover:scale-105 transition-transform duration-300"
               />
               <button
                 type="button"
-                onClick={() => setPost((prev) => ({ ...prev, image: "" }))}
-                className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold shadow-md hover:bg-red-700 transition"
+                onClick={handleRemoveImage}
+                className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-xl font-bold shadow-md hover:bg-red-700 transition opacity-80 hover:opacity-100"
                 title="Remove image"
               >
-                ×
+                &times;
               </button>
+            </div>
+          )}
+
+          {!currentImageSrc && (
+            <div className="mt-4 p-8 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500 flex flex-col items-center justify-center">
+              <MdOutlineImageNotSupported className="text-5xl mb-2" />
+              <span>No image selected</span>
             </div>
           )}
         </div>
@@ -239,11 +216,40 @@ const EditPost = () => {
         <button
           type="submit"
           disabled={submitLoading}
-          className={`w-full py-3 rounded-md text-white font-semibold ${
-            submitLoading ? "bg-indigo-300 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700"
-          } transition`}
+          className={`w-full py-3 rounded-md text-white font-semibold flex items-center justify-center gap-2 ${
+            submitLoading ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700"
+          } transition duration-200 ease-in-out`}
         >
+          {submitLoading && (
+            <svg
+              className="animate-spin h-5 w-5 text-white"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+          )}
           {submitLoading ? "Updating..." : "Update Post"}
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate("/profile")}
+          className="w-full py-3 rounded-md text-indigo-700 border border-indigo-600 font-semibold mt-4 hover:bg-indigo-50 transition duration-200 ease-in-out"
+        >
+          Cancel
         </button>
       </form>
     </div>

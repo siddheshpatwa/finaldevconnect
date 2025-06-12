@@ -1,183 +1,225 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axios from "axios"; // Ensure you use axios directly for consistent API calls
 import { useParams, useNavigate } from "react-router-dom";
-import api from "axios";
+import { jwtDecode } from "jwt-decode"; // <-- REQUIRED: Import jwtDecode
+
+// --- Icon Imports ---
+import { FiHeart, FiChevronDown, FiChevronUp } from "react-icons/fi"; // Feather icons
+import { FaHeart } from "react-icons/fa"; // Font Awesome filled heart
 
 const defaultAvatar = "https://www.w3schools.com/howto/img_avatar.png";
 
 const PublicProfilePage = () => {
-  const { userId } = useParams();
+  const { userId: publicProfileOwnerId } = useParams(); // Renamed for clarity: this is the ID of the profile being viewed
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [commentInputs, setCommentInputs] = useState({}); 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [previewImage, setPreviewImage] = useState(profile?.image || defaultAvatar);
+  const [commentInputs, setCommentInputs] = useState({});
+  const [showComments, setShowComments] = useState({}); // State to manage visibility of comments for each post
 
-  const toggleLike = async (postId) => {
+  // Loading/Error states for the profile itself
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [errorProfile, setErrorProfile] = useState(null);
+
+  // Loading/Error states specifically for the posts section
+  const [loadingPosts, setLoadingPosts] = useState(false); // Initial state can be false as it will be set true in useEffect
+  const [errorPosts, setErrorPosts] = useState(null);
+
+  const [currentLoggedInUserId, setCurrentLoggedInUserId] = useState(null); // To store the ID of the user currently logged in
+
+  // --- useEffect to fetch profile and posts ---
+  useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("Please login to like posts.");
       navigate("/login");
       return;
     }
 
     try {
-      // Optimistic UI update (optional)
-      setPosts((prev) =>
-        prev.map((p) =>
-          p._id === postId
-            ? {
-                ...p,
-                liked: !p.liked,
-                likes: p.liked ? p.likes - 1 : p.likes + 1,
-              }
-            : p
-        )
-      );
-    
+      const decoded = jwtDecode(token);
+      setCurrentLoggedInUserId(decoded.id); // Set the ID of the logged-in user
+    } catch (e) {
+      console.error("Failed to decode token:", e);
+      // If token is invalid, clear it and redirect
+      localStorage.removeItem("token");
+      navigate("/login");
+      return;
+    }
 
-      // Call backend API
-      const res = await api.post(
+    const fetchPublicProfileAndPosts = async () => {
+      setLoadingProfile(true);
+      setLoadingPosts(true);
+      setErrorProfile(null);
+      setErrorPosts(null);
+
+      try {
+        const res = await axios.get( // Using axios directly for consistency
+          `http://localhost:3000/api/user/profile/public-profile/${publicProfileOwnerId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        const fetchedProfileData = res.data.profile?.[0]; // Assuming backend returns an array
+        setProfile(fetchedProfileData);
+
+        // Process posts data from the backend
+        const processedPosts = (res.data.posts || []).map((post) => {
+          const likesArray = Array.isArray(post.likes) ? post.likes : []; // Ensure likes is an array of user IDs
+          const likedByCurrentUser = likesArray.includes(currentLoggedInUserId); // Check if *current logged-in user* liked it
+
+          return {
+            ...post,
+            // Ensure post.image is always available (either from img[0] or default)
+            image: post.img?.[0] || defaultAvatar,
+            // Ensure description is from 'desc' field
+            description: post.desc || "",
+            // Ensure comments is an array
+            comments: Array.isArray(post.comments) ? post.comments : [],
+            // Add a 'liked' boolean flag for easy UI rendering
+            liked: likedByCurrentUser,
+            // likes property already contains the array of user IDs from backend
+          };
+        });
+        setPosts(processedPosts);
+
+      } catch (err) {
+        const msg = err.response?.data?.message || "Failed to load profile or posts.";
+        setErrorProfile(msg);
+        setErrorPosts(msg); // Set error for posts section as well
+        console.error("Error fetching public profile:", err);
+      } finally {
+        setLoadingProfile(false);
+        setLoadingPosts(false);
+      }
+    };
+
+    if (currentLoggedInUserId) { // Only fetch if we have the current user's ID
+        fetchPublicProfileAndPosts();
+    }
+  }, [publicProfileOwnerId, navigate, currentLoggedInUserId]); // Add currentLoggedInUserId to dependencies
+
+  // --- Like/Comment Functions ---
+
+  const toggleLike = async (postId) => {
+    const token = localStorage.getItem("token");
+    if (!token || !currentLoggedInUserId) { // Ensure logged-in user ID is available
+      alert("Please login to like posts.");
+      navigate("/login");
+      return;
+    }
+
+    // Optimistic UI update
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p._id === postId) {
+          const isCurrentlyLiked = p.likes.includes(currentLoggedInUserId);
+          const newLikesArray = isCurrentlyLiked
+            ? p.likes.filter((id) => id !== currentLoggedInUserId)
+            : [...p.likes, currentLoggedInUserId];
+          return {
+            ...p,
+            likes: newLikesArray, // Update the array of user IDs
+            liked: !isCurrentlyLiked, // Toggle the boolean flag
+          };
+        }
+        return p;
+      })
+    );
+
+    try {
+      const res = await axios.post( // Use axios directly
         `http://localhost:3000/api/user/profile/like/${postId}`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      console.log("✅ Like/Unlike response:", res.data);
 
-      const updatedLikes = res.data.likes || [];
+      const updatedLikesFromServer = res.data.likes || []; // Backend should return the *array* of user IDs who liked it
 
-      // Update posts state with fresh data
-      setPosts((prev) =>
-        prev.map((p) => {
-          if (p._id === postId) {
-            const userLiked = updatedLikes.includes(profile._id);
-            return {
-              ...p,
-              liked: userLiked,
-              likes: updatedLikes.length,
-            };
-          }
-          return p;
-        })
-      );
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to like/unlike post.");
-      // Revert optimistic UI update if needed
+      // Revert/confirm with actual server response
       setPosts((prev) =>
         prev.map((p) =>
           p._id === postId
             ? {
                 ...p,
-                liked: p.liked,
-                likes: p.likes,
+                likes: updatedLikesFromServer,
+                liked: updatedLikesFromServer.includes(currentLoggedInUserId),
               }
             : p
         )
       );
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to like/unlike post.");
+      // Revert optimistic update on error
+      setPosts((prev) =>
+        prev.map((p) => {
+          if (p._id === postId) {
+            // Revert likes based on the state *before* the failed optimistic update
+            const wasLiked = p.likes.includes(currentLoggedInUserId); // This 'p.likes' already reflects the optimistic update
+            const revertedLikes = wasLiked
+              ? p.likes.filter((id) => id !== currentLoggedInUserId)
+              : [...p.likes, currentLoggedInUserId];
+            return {
+              ...p,
+              likes: revertedLikes,
+              liked: !wasLiked, // Revert the boolean flag
+            };
+          }
+          return p;
+        })
+      );
     }
   };
 
-  const handleComment = async (postId, commentText) => {
-  try {
-    console.log("Posting comment:", commentText, "for post:", postId);
+  const toggleComments = (postId) => { // Renamed param to postId for clarity
+    setShowComments((prev) => ({ ...prev, [postId]: !prev[postId] }));
+  };
+
+  const handleCommentSubmit = async (e, postId) => {
+    e.preventDefault();
+    const commentText = commentInputs[postId]?.trim();
+    if (!commentText) return;
 
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("Please login to comment on posts.");
+      alert("Please login to comment.");
       navigate("/login");
       return;
     }
 
-    const res = await api.post(
-      `http://localhost:3000/api/user/profile/comment/${postId}`,
-      { comment: commentText },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    try {
+      const response = await axios.post(
+        `http://localhost:3000/api/user/profile/comment/${postId}`,
+        { comment: commentText },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    const newComment = res.data.comment; // Ensure backend sends back the created comment
+      // Assuming backend returns the *updated comments array* for that post
+      const updatedComments = response.data.comments;
 
-    // 🔄 Update state locally
-    setPosts((prevPosts) =>
-      prevPosts.map((post) =>
-        post._id === postId
-          ? {
-              ...post,
-              comments: [...post.comments, newComment],
-            }
-          : post
-      )
-    );
+      setPosts((prev) =>
+        prev.map((post) =>
+          post._id === postId ? { ...post, comments: updatedComments } : post
+        )
+      );
 
-    console.log("Comment posted and state updated.");
-
-  } catch (error) {
-    alert(error.response?.data?.message || "Failed to comment on post.");
-    console.error("Error commenting on post:", error);
-  }
-};
-
-  useEffect(() => {
-    console.log("[useEffect] userId param changed:", userId);
-
-    const fetchPublicProfile = async () => {
-      const token = localStorage.getItem("token");
-      console.log("[fetchPublicProfile] Retrieved token:", token);
-
-      if (!token) {
-        console.warn("[fetchPublicProfile] No token found. Redirecting to login...");
-        navigate("/login");
-        return;
-      }
-
-      try {
-  setLoading(true);
-  const res = await api.get(
-    `http://localhost:3000/api/user/profile/public-profile/${userId}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
+      setCommentInputs((prev) => ({ ...prev, [postId]: "" })); // Clear the input field
+    } catch (error) {
+      console.error("Failed to post comment:", error);
+      alert(error.response?.data?.message || "Failed to post comment.");
     }
-  );
+  };
 
-  const fetchedProfile = res.data.profile?.[0];
-  const userIdFromResponse = fetchedProfile?.userId;
+  // --- Render Logic ---
 
-  setProfile(fetchedProfile);
-
-  setPosts(
-    (res.data.posts || []).map((post) => ({
-      ...post,
-      likes: Array.isArray(post.likes) ? post.likes.length : post.likes,
-      liked:
-        userIdFromResponse && Array.isArray(post.likes)
-          ? post.likes.includes(userIdFromResponse)
-          : post.liked || false,
-    }))
-  );
-} catch (err) {
-  const msg = err.response?.data?.message || err.message;
-  setError(msg);
-} finally {
-  setLoading(false);
-}
-
-    };
-
-    fetchPublicProfile();
-  }, [userId, navigate]);
-
-  console.log("[Render] loading:", loading);
-  console.log("[Render] error:", error);
-  console.log("[Render] profile:", profile);
-  console.log("[Render] posts:", posts);
-
-  if (loading) {
+  if (loadingProfile) {
     return (
       <p className="text-center mt-20 font-semibold text-cyan-500 animate-pulse">
         Loading public profile...
@@ -185,13 +227,13 @@ const PublicProfilePage = () => {
     );
   }
 
-  if (error) {
-    return <p className="text-center mt-20 font-semibold text-red-600">{error}</p>;
+  if (errorProfile) {
+    return <p className="text-center mt-20 font-semibold text-red-600">{errorProfile}</p>;
   }
 
   if (!profile) {
     return (
-      <p className="text-center mt-20 italic text-gray-500">No profile found.</p>
+      <p className="text-center mt-20 italic text-gray-500">No profile found for this user.</p>
     );
   }
 
@@ -203,7 +245,6 @@ const PublicProfilePage = () => {
           alt={`${profile.name || "User"}'s profile`}
           className="w-36 h-36 rounded-full border-8 border-cyan-400 shadow-lg object-cover mx-auto"
         />
-        {console.log("Profile image URL:", profile)}
         <h1 className="text-4xl font-extrabold text-cyan-700 tracking-wide">
           {profile.name}
         </h1>
@@ -216,179 +257,174 @@ const PublicProfilePage = () => {
           {profile.skills?.length > 0 ? profile.skills.join(", ") : "None"}
         </p>
         <div className="flex justify-center flex-wrap gap-6 mt-4">
-         {profile.socialLinks &&
-  Object.entries(profile.socialLinks)
-    .filter(([_, url]) => url?.trim())
-    .map(([key, url]) => (
-      <a
-        key={key}
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-cyan-600 hover:text-cyan-800 transition font-semibold uppercase tracking-wide"
-      >
-        {key.charAt(0).toUpperCase() + key.slice(1)}
-      </a>
-    ))}
-
+          {profile.socialLinks &&
+            Object.entries(profile.socialLinks)
+              .filter(([_, url]) => url?.trim())
+              .map(([key, url]) => (
+                <a
+                  key={key}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-600 hover:text-cyan-800 transition font-semibold uppercase tracking-wide"
+                >
+                  {key.charAt(0).toUpperCase() + key.slice(1)}
+                </a>
+              ))}
         </div>
       </div>
+
+      {/* Button to view current logged-in user's profile */}
       <div className="text-center mt-6">
-  <button
-    onClick={() => navigate("/profile")}
-    className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-6 rounded-full shadow transition duration-200"
-  >
-    View My Profile
-  </button>
-</div>
-
-    <section className="mt-12 max-w-4xl mx-auto space-y-10">
-  <h2 className="text-3xl font-bold text-cyan-700 border-b-4 border-cyan-400 pb-2">
-    {profile.name}'s Posts
-  </h2>
-
-  {posts.length === 0 ? (
-    <p className="italic text-gray-500 text-center">No posts available.</p>
-  ) : (
-    posts.map((post) => (
-      <div
-        key={post._id}
-        className="bg-white rounded-2xl shadow-lg p-6 space-y-4 border border-cyan-100"
-      >
-                      <p className="text-gray-700">{post.title}</p>
-        <img
-          src={post.img?.[0] || defaultAvatar}
-          alt={post.alt || "Post Image"}
-          className="w-full h-64 object-cover rounded-xl"
-        />
-                  <p className="text-gray-700">{post.desc || ""}</p>
-
-   <p className="text-sm text-cyan-500 font-medium">
-                Location: {post.location || "None"}
-              </p>
-               <p className="text-sm text-cyan-500 font-medium">
-                Caption: {post.caption || "None"}
-              </p>
-        <p className="text-sm text-cyan-500 font-medium">
-          Hashtags: {post.hashtags || "None"}
-        </p>
-        <p className="text-sm text-cyan-400 italic">
-          Tagged: {post.tags || "None"}
-        </p>
-
-        <div className="flex items-center justify-between mt-4">
-          <button
-            onClick={() => toggleLike(post._id)}
-            className={`font-bold text-sm transition ${
-              post.liked ? "text-pink-600" : "text-gray-500"
-            }`}
-          >
-            {post.liked ? "♥ Liked" : "♡ Like"}
-          </button>
-          <span className="text-cyan-500 font-medium">
-            {post.likes} {post.likes === 1 ? "like" : "likes"}
-          </span>
-        </div>
-
-        {/* Comments Section */}
-        <div className="mt-6">
-  <h3 className="text-cyan-700 font-semibold mb-2">
-    Comments ({post.comments?.length || 0})
-  </h3>
-
-  {/* Existing Comments */}
-  {post.comments && post.comments.length > 0 ? (
-    <ul className="max-h-40 overflow-y-auto space-y-3 mb-4">
-      {post.comments.map((comment, index) => {
-        if (!comment || typeof comment !=="object") return null;
-        return (
-          <li
-            key={comment._id || comment.createdAt || index}
-            className="border rounded-lg p-3 bg-cyan-50"
-          >
-            <p className="text-sm font-medium text-cyan-700">{comment.name}</p>
-            <p className="text-gray-700">{comment.text}</p>
-            <p className="text-xs text-gray-400 mt-1">
-              {new Date(comment.createdAt).toLocaleString()}
-            </p>
-          </li>
-        );
-})}
-    </ul>
-  ) : (
-    <p className="text-gray-400 italic mb-4">
-      No comments yet. Be the first to comment!
-    </p>
-  )}
-
-  {/* Add Comment Input */}
-  <form
-    onSubmit={async (e) => {
-      e.preventDefault();
-      console.log("Submitting comment for post:");
-      const commentText = commentInputs[post._id]?.trim();
-      if (!commentText) return;
-
-      const token = localStorage.getItem("token");
-      if (!token) {
-        alert("Please login to comment.");
-        navigate("/login");
-        return;
-      }
-
-      try {
-        const res = await api.post(
-          `http://localhost:3000/api/user/profile/comment/${post._id}`,
-          { comment: commentText },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        const newComment = res.data.comment; // Adjust if your API returns differently
-
-        // Immediately update the local post state with the new comment
-        setPosts((prevPosts) =>
-          prevPosts.map((p) =>
-            p._id === post._id
-              ? { ...p, comments: [...p.comments, newComment] }
-              : p
-          )
-        );
-
-        // Clear the input
-        setCommentInputs((prev) => ({ ...prev, [post._id]: "" }));
-      } catch (error) {
-        alert(error.response?.data?.message || "Failed to comment.");
-        console.error(error);
-      }
-    }}
-    className="flex space-x-3"
-  >
-    <input
-      type="text"
-      placeholder="Add a comment..."
-      value={commentInputs[post._id] || ""}
-      onChange={(e) =>
-        setCommentInputs((prev) => ({ ...prev, [post._id]: e.target.value }))
-      }
-      className="flex-grow border border-cyan-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-      required
-    />
-    <button
-      type="submit"
-      className="bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-5 py-2 font-semibold transition"
-    >
-      Post
-    </button>
-  </form>
-</div>
-
+        <button
+          onClick={() => navigate("/profile")}
+          className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-6 rounded-full shadow transition duration-200"
+        >
+          View My Profile
+        </button>
       </div>
-    ))
-  )}
-</section>
 
+      {/* --- Posts Section --- */}
+      <section className="mt-12 max-w-4xl mx-auto space-y-10">
+        <h2 className="text-3xl font-bold text-cyan-700 border-b-4 border-cyan-400 pb-2">
+          {profile.name}'s Posts
+        </h2>
+
+        {loadingPosts ? (
+          <p className="text-center text-cyan-500 font-semibold animate-pulse">Loading posts...</p>
+        ) : errorPosts ? (
+          <p className="text-center text-red-500 font-semibold">{errorPosts}</p>
+        ) : posts.length === 0 ? (
+          <p className="italic text-gray-500 text-center">This user has no posts yet.</p>
+        ) : (
+          posts.map((post) => (
+            <div
+              key={post._id}
+              className="bg-white rounded-2xl shadow-lg p-6 space-y-4 border border-cyan-100"
+            >
+              <p className="text-gray-700 font-semibold text-lg">{post.title}</p>
+              <img
+                src={post.image} 
+                alt={post.alt || "Post Image"}
+                className="w-full h-64 object-cover rounded-xl"
+              />
+              <p className="text-gray-700">{post.description}</p> {/* Use post.description */}
+
+              {post.location && (
+                <p className="text-sm text-cyan-500 font-medium">Location: {post.location}</p>
+              )}
+              {post.caption && (
+                <p className="text-sm text-cyan-500 font-medium">Caption: {post.caption}</p>
+              )}
+              {post.hashtags && (
+                <p className="text-sm text-cyan-500 font-medium">
+                  Hashtags:{" "}
+                  {post.hashtags.split(",").map((tag, index) => (
+                    <span key={index} className="inline-block bg-cyan-100 rounded-full px-2 py-0.5 text-xs mr-1">
+                      #{tag.trim()}
+                    </span>
+                  ))}
+                </p>
+              )}
+           
+
+
+              <div className="flex items-center justify-between mt-4 border-t pt-4 border-cyan-100 flex-wrap gap-y-4">
+                {/* Like Button and Count */}
+                <div
+                  className="flex items-center space-x-2 cursor-pointer select-none group"
+                  onClick={() => toggleLike(post._id)}
+                >
+                  {post.liked ? ( // Use 'post.liked' for visual state
+                    <FiHeart className="text-pink-600 text-2xl transition-transform group-hover:scale-110" />
+                  ) : (
+                    <FiHeart className="text-gray-500 text-2xl group-hover:text-pink-600 transition-transform group-hover:scale-110" />
+                  )}
+                  <span
+                    className={`font-semibold text-lg ${
+                      post.liked ? "text-pink-600" : "text-gray-600"
+                    }`}
+                  >
+                    {post.likes.length} {post.likes.length === 1 ? "Like" : "Likes"}
+                  </span>
+                </div>
+
+                {/* Comment Toggle and Count */}
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => toggleComments(post._id)}
+                    className="flex items-center gap-1 text-cyan-600 hover:text-cyan-800 font-semibold transition"
+                  >
+                    Comments ({post.comments.length}){" "}
+                    {showComments[post._id] ? (
+                      <FiChevronUp className="text-xl" />
+                    ) : (
+                      <FiChevronDown className="text-xl" />
+                    )}
+                  </button>
+                </div>
+                {/* Removed delete button */}
+              </div>
+
+              {/* Expanded Comments Section */}
+              {showComments[post._id] && (
+                <div className="comments-section mt-4 pt-4 border-t border-gray-100">
+                  {post.comments.length === 0 ? (
+                    <p className="text-gray-500 italic mb-4 text-center">No comments yet. Be the first!</p>
+                  ) : (
+                    <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                      {post.comments.map((comment) => (
+                        <div key={comment._id} className="comment bg-gray-50 p-3 rounded-lg shadow-sm">
+                          <p className="font-semibold text-gray-800 flex items-center">
+                            {/* Ensure comment.user.name or comment.name is available */}
+                            {/* <img
+                              src={comment.user?.avatar || defaultAvatar} // Assuming comment has a 'user' object with 'avatar'
+                              alt="Commenter Avatar"
+                              className="w-8 h-8 rounded-full mr-2 object-cover"
+                            /> */}
+                            {comment.user?.name || comment.name || "Anonymous"}
+                          </p>
+                          <p className="text-gray-700 mt-1">{comment.text}</p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {new Date(comment.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Comment Input Form */}
+                  <form
+                    onSubmit={(e) => handleCommentSubmit(e, post._id)}
+                    className="flex space-x-3 mt-5"
+                  >
+                    <input
+                      type="text"
+                      placeholder="Add a comment..."
+                      value={commentInputs[post._id] || ""}
+                      onChange={(e) =>
+                        setCommentInputs((prev) => ({
+                          ...prev,
+                          [post._id]: e.target.value,
+                        }))
+                      }
+                      className="flex-grow border border-cyan-300 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-gray-700 placeholder-gray-400"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      disabled={!commentInputs[post._id]?.trim()}
+                      className="bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-5 py-2 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Post
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </section>
     </div>
   );
 };

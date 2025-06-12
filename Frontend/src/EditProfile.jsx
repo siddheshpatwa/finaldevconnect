@@ -9,14 +9,11 @@ const defaultAvatar = "https://www.w3schools.com/howto/img_avatar.png";
 
 const validationSchema = Yup.object({
   name: Yup.string()
-    .matches(/^[A-Za-z\s]+$/, "Only letters and spaces are allowed")
     .required("Name is required"),
   bio: Yup.string()
-    .matches(/^[A-Za-z0-9\s.,'-]*$/, "Invalid bio format")
     .nullable(),
-  skills: Yup.string()
-  .matches(/^[a-zA-Z]+(,[a-zA-Z]+)*$/, "Only words and commas allowed")
-  .required("Skills are required"),
+  
+
   github: Yup.string().url("Invalid URL"),
   linkedin: Yup.string().url("Invalid URL"),
   twitter: Yup.string().url("Invalid URL"),

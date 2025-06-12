@@ -12,13 +12,6 @@ const CreatePost = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState({
-    title: "",
-    description: "",
-    caption: "",
-    hashtags: "",
-    location: "",
-  });
 
   const navigate = useNavigate();
 
@@ -32,9 +25,6 @@ const CreatePost = () => {
     setFiles(selectedFiles);
   };
 
-  const isValidText = (text) => /^[A-Za-z\s]+$/.test(text.trim());
-  const isValidHashtags = (text) => /^#\w+( #\w+)*$/.test(text.trim());
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -45,37 +35,6 @@ const CreatePost = () => {
     if (!token) {
       setLoading(false);
       return setError("User not authenticated");
-    }
-
-    // Field validations
-    let hasError = false;
-    const newErrors = {};
-
-    if (!isValidText(title)) {
-      newErrors.title = "Only letters and spaces are allowed.";
-      hasError = true;
-    }
-    if (!isValidText(description)) {
-      newErrors.description = "Only letters and spaces are allowed.";
-      hasError = true;
-    }
-    if (!isValidText(caption)) {
-      newErrors.caption = "Only letters and spaces are allowed.";
-      hasError = true;
-    }
-    if (location && !isValidText(location)) {
-      newErrors.location = "Only letters and spaces are allowed.";
-      hasError = true;
-    }
-    if (hashtags && !isValidHashtags(hashtags)) {
-      newErrors.hashtags = "Hashtags must start with # and be space-separated.";
-      hasError = true;
-    }
-
-    setFieldErrors(newErrors);
-    if (hasError) {
-      setLoading(false);
-      return;
     }
 
     try {
@@ -150,21 +109,11 @@ const CreatePost = () => {
             <input
               type="text"
               value={title}
-              onChange={(e) => {
-                const val = e.target.value;
-                setTitle(val);
-                setFieldErrors((prev) => ({
-                  ...prev,
-                  title: !isValidText(val) ? "Only letters and spaces are allowed." : "",
-                }));
-              }}
+              onChange={(e) => setTitle(e.target.value)}
               required
               placeholder="My Trip to the Mountains"
-              className={`w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 ${
-                fieldErrors.title ? "border-red-400 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"
-              }`}
+              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 border-gray-300 focus:ring-blue-400"
             />
-            {fieldErrors.title && <p className="text-red-600 text-sm mt-1">{fieldErrors.title}</p>}
           </div>
 
           {/* Description */}
@@ -172,21 +121,11 @@ const CreatePost = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea
               value={description}
-              onChange={(e) => {
-                const val = e.target.value;
-                setDescription(val);
-                setFieldErrors((prev) => ({
-                  ...prev,
-                  description: !isValidText(val) ? "Only letters and spaces are allowed." : "",
-                }));
-              }}
+              onChange={(e) => setDescription(e.target.value)}
               required
               placeholder="Write a detailed description of your post"
-              className={`w-full border rounded-lg px-4 py-2 h-24 resize-none focus:outline-none focus:ring-2 ${
-                fieldErrors.description ? "border-red-400 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"
-              }`}
+              className="w-full border rounded-lg px-4 py-2 h-24 resize-none focus:outline-none focus:ring-2 border-gray-300 focus:ring-blue-400"
             />
-            {fieldErrors.description && <p className="text-red-600 text-sm mt-1">{fieldErrors.description}</p>}
           </div>
 
           {/* Caption */}
@@ -194,21 +133,10 @@ const CreatePost = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Caption</label>
             <textarea
               value={caption}
-              onChange={(e) => {
-                const val = e.target.value;
-                setCaption(val);
-                setFieldErrors((prev) => ({
-                  ...prev,
-                  caption: !isValidText(val) ? "Only letters and spaces are allowed." : "",
-                }));
-              }}
-              required
+              onChange={(e) => setCaption(e.target.value)}
               placeholder="e.g. Sunset vibes from hike!"
-              className={`w-full border rounded-lg px-4 py-2 h-24 resize-none focus:outline-none focus:ring-2 ${
-                fieldErrors.caption ? "border-red-400 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"
-              }`}
+              className="w-full border rounded-lg px-4 py-2 h-24 resize-none focus:outline-none focus:ring-2 border-gray-300 focus:ring-blue-400"
             />
-            {fieldErrors.caption && <p className="text-red-600 text-sm mt-1">{fieldErrors.caption}</p>}
           </div>
 
           {/* File upload */}
@@ -231,23 +159,10 @@ const CreatePost = () => {
             <input
               type="text"
               value={hashtags}
-              onChange={(e) => {
-                const val = e.target.value;
-                setHashtags(val);
-                setFieldErrors((prev) => ({
-                  ...prev,
-                  hashtags:
-                    val && !isValidHashtags(val)
-                      ? "Hashtags must start with # and be space-separated."
-                      : "",
-                }));
-              }}
+              onChange={(e) => setHashtags(e.target.value)}
               placeholder="#sunset #nature"
-              className={`w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 ${
-                fieldErrors.hashtags ? "border-red-400 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"
-              }`}
+              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 border-gray-300 focus:ring-blue-400"
             />
-            {fieldErrors.hashtags && <p className="text-red-600 text-sm mt-1">{fieldErrors.hashtags}</p>}
           </div>
 
           {/* Location */}
@@ -256,20 +171,10 @@ const CreatePost = () => {
             <input
               type="text"
               value={location}
-              onChange={(e) => {
-                const val = e.target.value;
-                setLocation(val);
-                setFieldErrors((prev) => ({
-                  ...prev,
-                  location: val && !isValidText(val) ? "Only letters and spaces are allowed." : "",
-                }));
-              }}
+              onChange={(e) => setLocation(e.target.value)}
               placeholder="Western Ghats"
-              className={`w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 ${
-                fieldErrors.location ? "border-red-400 focus:ring-red-400" : "border-gray-300 focus:ring-blue-400"
-              }`}
+              className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 border-gray-300 focus:ring-blue-400"
             />
-            {fieldErrors.location && <p className="text-red-600 text-sm mt-1">{fieldErrors.location}</p>}
           </div>
 
           {/* Submit Button */}

@@ -23,8 +23,10 @@ const ProfilePage = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [errorUsers, setErrorUsers] = useState(null);
-  const [previewImage, setPreviewImage] = useState(profile?.image || defaultAvatar);
+  // Removed unused state: [previewImage, setPreviewImage] and [selectedImage, setSelectedImage]
+  // const [previewImage, setPreviewImage] = useState(profile?.image || defaultAvatar);
   // const [selectedImage, setSelectedImage] = useState(null);
+
   const navigate = useNavigate();
   const token2 = localStorage.getItem("token");
   const decoded = token2 ? jwtDecode(token2) : null;
@@ -60,14 +62,13 @@ const ProfilePage = () => {
 
         const postsWithExtras = res.data.post.map((post) => ({
           ...post,
-          liked: post.liked || false, // Adjust based on backend if needed
-          image: post.img?.[0] || defaultAvatar,
+          image: post.img?.[0] || defaultAvatar, // Use first image or default
           description: post.desc || "",
           hashtags: post.hashtags || "",
           taggedPeople: post.tags || "",
           altText: post.alt || "",
-          // Ensure 'likes' is an array to match the backend's expected structure for includes()
           likes: post.likes || [],
+          comments: post.comments || [], // Ensure comments array exists
         }));
         setPosts(postsWithExtras);
       } catch (err) {
@@ -122,23 +123,30 @@ const ProfilePage = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    navigate("/login");
+    navigate("/");
   };
+
+  // New handler for Dashboard navigation
+  const handleDashboardClick = () => {
+    navigate("/dashboard");
+  };
+
   const toggleComments = (id) => {
     setShowComments((prev) => ({ ...prev, [id]: !prev[id] }));
   };
-
 
   const handleCommentSubmit = async (e, postId) => {
     e.preventDefault();
     const commentText = commentInputs[postId]?.trim();
     if (!commentText) return;
+
     const token = localStorage.getItem("token");
     if (!token) {
       alert("Please login to comment.");
       navigate("/login");
       return;
     }
+
     try {
       const response = await axios.post(
         `http://localhost:3000/api/user/profile/comment/${postId}`,
@@ -165,7 +173,6 @@ const ProfilePage = () => {
     }
   };
 
-
   const toggleLike = async (postId) => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -173,7 +180,6 @@ const ProfilePage = () => {
       navigate("/login");
       return;
     }
-
 
     // Optimistically update the UI
     setPosts((prev) =>
@@ -208,9 +214,9 @@ const ProfilePage = () => {
         prev.map((p) =>
           p._id === postId
             ? {
-              ...p,
-              likes: updatedLikes,
-            }
+                ...p,
+                likes: updatedLikes,
+              }
             : p
         )
       );
@@ -248,33 +254,6 @@ const ProfilePage = () => {
       setPosts((prev) => prev.filter((p) => p._id !== postId));
     } catch (err) {
       alert(err.response?.data?.message || "Failed to delete post.");
-    }
-  };
-  const handleImageUpload = async () => {
-    if (!selectedImage) return alert("Please select an image");
-
-    const token = localStorage.getItem("token");
-    const formData = new FormData();
-    formData.append("image", selectedImage);
-
-    try {
-      const res = await api.post(
-        "http://localhost:3000/api/user/profile/upload-image", // adjust if your endpoint differs
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      // Optionally update state with uploaded image URL from backend
-      setPreviewImage(res.data.image);
-      alert("Profile image uploaded successfully!");
-    } catch (error) {
-      console.error("Upload error:", error);
-      alert(error.response?.data?.message || "Failed to upload image");
     }
   };
 
@@ -368,9 +347,18 @@ const ProfilePage = () => {
             >
               Logout
             </button>
+            {/* New Dashboard Button - Option 1: Softer Cyan */}
+            <button
+              onClick={handleDashboardClick}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white font-semibold px-6 py-3 rounded-full shadow-lg transition"
+            >
+              Dashboard
+            </button>
           </div>
         </div>
       ) : null}
+
+      ---
 
       {/* Posts Section */}
       <section className="mt-12 max-w-4xl mx-auto space-y-10">
@@ -416,6 +404,16 @@ const ProfilePage = () => {
                     >
                       ✏️ Edit Post
                     </button>
+                    {/* Delete button moved here for better UX */}
+                    <button
+                      onClick={() => {
+                        setOpenMenuId(null);
+                        handleDeletePost(post._id);
+                      }}
+                      className="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-700 w-full text-left"
+                    >
+                      🗑️ Delete Post
+                    </button>
                   </div>
                 )}
               </div>
@@ -427,9 +425,9 @@ const ProfilePage = () => {
                 className="w-full h-64 object-cover rounded-xl"
               />
               <p className="text-gray-700 dark:text-gray-300">{post.description}</p>
-              <p className="text-sm text-cyan-500 font-medium">Location: {post.location || "None"}</p>
-              <p className="text-sm text-cyan-500 font-medium">Caption: {post.caption || "None"}</p>
-              <p className="text-sm text-cyan-500 font-medium">Hashtags: {post.hashtags || "None"}</p>
+              {post.location && <p className="text-sm text-cyan-500 font-medium">Location: {post.location}</p>}
+              {post.caption && <p className="text-sm text-cyan-500 font-medium">Caption: {post.caption}</p>}
+              {post.hashtags && <p className="text-sm text-cyan-500 font-medium">Hashtags: {post.hashtags}</p>}
 
               {/* Likes / Comments / Delete Actions */}
               <div className="flex items-center justify-between mt-4 border-t pt-4 border-cyan-100 dark:border-gray-700">
@@ -437,8 +435,9 @@ const ProfilePage = () => {
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => toggleLike(post._id)}
-                    className={`flex items-center gap-1 text-sm font-medium transition duration-200 ${post.likes.includes(userId) ? "text-pink-600" : "text-gray-500 hover:text-pink-500"
-                      }`}
+                    className={`flex items-center gap-1 text-sm font-medium transition duration-200 ${
+                      post.likes.includes(userId) ? "text-pink-600" : "text-gray-500 hover:text-pink-500"
+                    }`}
                   >
                     <FiHeart className="text-lg" />
                     {post.likes.includes(userId) ? "Liked" : "Like"}
@@ -448,7 +447,7 @@ const ProfilePage = () => {
                   </span>
                 </div>
 
-                {/* Comment Toggle + Delete */}
+                {/* Comment Toggle */}
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => toggleComments(post._id)}
@@ -463,13 +462,6 @@ const ProfilePage = () => {
                         <FiChevronDown className="mr-1" /> Show Comments
                       </>
                     )}
-                  </button>
-
-                  <button
-                    onClick={() => handleDeletePost(post._id)}
-                    className="bg-red-100 hover:bg-red-200 text-red-600 font-semibold text-sm px-4 py-2 rounded-full transition duration-200"
-                  >
-                    Delete
                   </button>
                 </div>
               </div>
@@ -526,12 +518,14 @@ const ProfilePage = () => {
                     </button>
                   </form>
                 </div>
+
               )}
+
             </div>
+
           ))
         )}
       </section>
-
     </div>
   );
 };

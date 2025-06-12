@@ -22,10 +22,6 @@ const Register = () => {
     validationSchema: Yup.object({
       name: Yup.string()
         .trim()
-        .matches(
-          /^[a-zA-Z0-9._\-@$#]+$/,
-          'Username can contain letters, numbers, and _ . - @ $ #'
-        )
         .min(3, 'Username must be at least 3 characters')
         .required('Username is required'),
       email: Yup.string()
@@ -46,7 +42,7 @@ const Register = () => {
         const { token } = response.data;
         localStorage.setItem('token', token);
         setMessage('Registration successful!');
-        navigate('/create-profile');
+        navigate('/AdminLogin');
       } catch (error) {
         console.error('Registration error:', error);
         setMessage(error.response?.data?.message || 'Error occurred during registration');

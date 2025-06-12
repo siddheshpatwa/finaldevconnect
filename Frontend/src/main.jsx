@@ -24,17 +24,16 @@ createRoot(document.getElementById('root')).render(
             <ThemeProvider>
         <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<ProfilePage />} />
-         <Route path="/login" element={<Login />} />
+         <Route path="/" element={<Login />} />
         <Route path="/create-profile" element={<CreateProfile />} />
          <Route path="/edit-profile" element={<EditProfile />} />
         <Route path="/create-post" element={<CreatePost/>} />
         <Route path="/edit-post/:id" element={<EditPost />} />
         <Route path="/view-post/:id" element={<ViewPost />} />
         <Route path="/public-profile/:userId" element={<PublicProfilePage />} />
-        <Route path="/" element={<Dashboard/>} />
+        <Route path="/dashboard" element={<Dashboard/>} />
         <Route path="/Admin" element={<AdminPage/>} />
         <Route path="/AdminLogin" element={<AdminLogin />} />
         <Route path="/edit-post-admin/:postId" element={<EditPostAdmin/>} />
